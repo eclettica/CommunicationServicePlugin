@@ -13,15 +13,11 @@ CommunicationServicePlugin.prototype._pluginInitialize = function() {
   }
 }
 
-CommunicationServicePlugin.prototype.onIncomingCall = function(callObj: any) {
+CommunicationServicePlugin.prototype.onIncomingCall = function(callObj) {
   console.log('GESTIONE CALL', callObj);
 }
 
-CommunicationServicePlugin.prototype.initListners = function(overrides: {
-  message: (msg: any) => void,
-  incomingCall: (msg: any) => void,
-  rejectCall: (msg: any) => void,
-}) {
+CommunicationServicePlugin.prototype.initListners = function(overrides) {
  
 }
 

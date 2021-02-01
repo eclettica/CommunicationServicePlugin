@@ -11,8 +11,8 @@ import android.os.IBinder;
 import android.os.AsyncTask;
 import android.os.Handler;
 import android.widget.Toast;
-import it.linup.cordova.plugin.services.communication.CommunicationService;
-import it.linup.cordova.plugin.services.communication.CommunicationService.ForegroundBinder;
+import it.linup.cordova.plugin.communication.services.CommunicationService;
+import it.linup.cordova.plugin.communication.services.CommunicationService.ForegroundBinder;
 import it.linup.cordova.plugin.services.WebsocketListnerInterface;
 import it.linup.cordova.plugin.utils.FileUtils;
 import it.linup.cordova.plugin.utils.LogUtils;
@@ -214,10 +214,9 @@ public class CommunicationServicePlugin extends CordovaPlugin {
 
     //@Override
     public String getName() {
-        return "WebSocketServicePlugin";
+        return "CommunicationServicePlugin";
     }
 
-    public static WebSocketClient _sock;
     private static String uri;
 
 

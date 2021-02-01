@@ -115,7 +115,7 @@ public class CommunicationService extends Service implements WebsocketListnerInt
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        _onStartCommand(uri);
+        _onStartCommand();
 
         // PREFERISCO UTILIZZARE LO START_STICKY PERCHE' NEL CASO DI CAMBIO SERVER ATTRVERSO IL CONNECT DI WebSocketNativeModulo riscrivo l'uri e reinizializzo tutto
         return START_STICKY;
@@ -124,7 +124,7 @@ public class CommunicationService extends Service implements WebsocketListnerInt
     }
 
 
-    private void _onStartCommand(String uri){
+    private void _onStartCommand(){
         LogUtils.printLog(tag," onStartCommand ");
 	WebsocketService.instance().addListner(this);
     }
@@ -172,5 +172,8 @@ public class CommunicationService extends Service implements WebsocketListnerInt
 
 */
 
+    public void onEvent(String event, String data) {
+        LogUtils.printLog(tag,event + " " + data);
+    }
 
 }
