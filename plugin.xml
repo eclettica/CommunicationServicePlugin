@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        id="cordova-plugin-linupcommunicationservice" version="0.0.1">
+    <name>CommunicationServicePlugin</name>
+
+    <description>An Android Cordova plugin.</description>
+    <license>MIT</license>
+
+    <keywords>cordova,android,communication,webrtc,messaging</keywords>
+    <repo>https://github.com/eclettica/CommunicationServicePlugin.git</repo>
+    <issue>https://github.com/eclettica/CommunicationServicePlugin/issues</issue>
+  
+    <engines>
+        <engine name="cordova" version=">=3.0.0"/>
+    </engines>
+  
+    <!-- dependencies -->
+    <dependency id="cordova-plugin-linupwebsocketservice" />
+
+    <js-module src="www/communicationService.js" name="CommunicationServicePlugin">
+        <clobbers target="window.plugins.communicationServicePlugin" />
+    </js-module>
+    <platform name="android">
+        
+
+        <source-file src="src/android/CommunicationServicePlugin.java" target-dir="src/it/linup/cordova/plugin/communication" />
+        <!-- <source-file src="src/android/WebSocketNativeModule.java" target-dir="src/it/linup/cordova/plugin" /> -->
+        <!-- <source-file src="src/android/utils/FileUtils.java" target-dir="src/it/linup/cordova/plugin/utils" /> -->
+        <!-- <source-file src="src/android/utils/LogUtils.java" target-dir="src/it/linup/cordova/plugin/utils" /> -->
+        <source-file src="src/android/services/CommunicationService.java" target-dir="src/it/linup/cordova/plugin/communication/services" />
+        <!-- <source-file src="src/android/services/NotificationService.java" target-dir="src/it/linup/cordova/plugin/services" /> -->
+    </platform>
+</plugin>

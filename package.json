@@ -1,0 +1,33 @@
+{
+  "name": "cordova-plugin-linupcommunicationservice",
+  "version": "0.0.1",
+  "description": "An Android Cordova plugin",
+  "cordova": {
+    "id": "cordova-plugin-linupcommunicationservice",
+    "platforms": [
+      "android"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/eclettica/WebsocketServicePlugin.git"
+  },
+  "keywords": [
+    "Websocket",
+    "Service",
+    "ecosystem:cordova",
+    "cordova-android"
+  ],
+  "engines": [
+    {
+      "name": "cordova",
+      "version": ">=3.0.0"
+    }
+  ],
+  "author": "Linup",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/eclettica/WebsocketServicePlugin/issues"
+  },
+  "homepage": "https://github.com/eclettica/WebsocketServicePlugin"
+}
