@@ -66,6 +66,11 @@ CommunicationServicePlugin.prototype.connect = function(uri, successCallback, er
   cordova.exec(successCallback, errorCallback, 'CommunicationServicePlugin', 'connect', [options]);
 }
 
+CommunicationServicePlugin.prototype.startService = function(uri, successCallback, errorCallback) {
+  var options = {};
+  cordova.exec(successCallback, errorCallback, 'CommunicationServicePlugin', 'startService', [options]);
+}
+
 CommunicationServicePlugin.prototype.send = function(msg, successCallback, errorCallback) {
   var options = {};
   options.params = msg;

@@ -18,11 +18,27 @@
     <!-- dependencies -->
     <dependency id="cordova-plugin-linupwebsocketservice" />
 
-    <js-module src="www/communicationService.js" name="CommunicationServicePlugin">
-        <clobbers target="window.plugins.communicationServicePlugin" />
+    <js-module src="www/CommunicationService.js" name="CommunicationServicePlugin">
+        <clobbers target="window.plugins.CommunicationServicePlugin" />
     </js-module>
     <platform name="android">
-        
+        <config-file target="res/xml/config.xml" parent="/*">
+            <feature name="CommunicationServicePlugin">
+                <param name="android-package" value="it.linup.cordova.plugin.communication.CommunicationServicePlugin"/>
+                <param name="onload" value="true" />
+            </feature>
+        </config-file>
+        <config-file target="AndroidManifest.xml" parent="/manifest/application">
+            <activity android:label="IncomingCall" android:name="it.linup.cordova.plugin.communication.IncomingCallActivity"></activity>
+            <service 
+            android:name="it.linup.cordova.plugin.communication.services.CommunicationService"
+            android:enabled="true"
+            android:exported="true">
+                <intent-filter>         
+                    <action android:name="it.linup.cordova.plugin.communication.services.CommunicationService"/> 
+                </intent-filter>     
+            </service>
+        </config-file>
 
         <source-file src="src/android/CommunicationServicePlugin.java" target-dir="src/it/linup/cordova/plugin/communication" />
         <!-- <source-file src="src/android/WebSocketNativeModule.java" target-dir="src/it/linup/cordova/plugin" /> -->
@@ -30,5 +46,7 @@
         <!-- <source-file src="src/android/utils/LogUtils.java" target-dir="src/it/linup/cordova/plugin/utils" /> -->
         <source-file src="src/android/services/CommunicationService.java" target-dir="src/it/linup/cordova/plugin/communication/services" />
         <!-- <source-file src="src/android/services/NotificationService.java" target-dir="src/it/linup/cordova/plugin/services" /> -->
+        <source-file src="src/android/IncomingCallActivity.java" target-dir="src/it/linup/cordova/plugin/communication" />
+        <source-file src="src/android/incoming_call.xml" target-dir="res/layout"/>
     </platform>
 </plugin>

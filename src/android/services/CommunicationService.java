@@ -173,7 +173,7 @@ public class CommunicationService extends Service implements WebsocketListnerInt
 */
 
     public void onEvent(String event, String data) {
-        LogUtils.printLog(tag,event + " " + data);
+        LogUtils.printLog(tag, event + " " + data);
     }
 
 }

@@ -10,7 +10,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/eclettica/WebsocketServicePlugin.git"
+    "url": "git+https://github.com/eclettica/CommunicationServicePlugin.git"
   },
   "keywords": [
     "Websocket",
@@ -27,7 +27,7 @@
   "author": "Linup",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/eclettica/WebsocketServicePlugin/issues"
+    "url": "https://github.com/eclettica/CommunicationServicePlugin/issues"
   },
-  "homepage": "https://github.com/eclettica/WebsocketServicePlugin"
+  "homepage": "https://github.com/eclettica/CommunicationServicePlugin"
 }

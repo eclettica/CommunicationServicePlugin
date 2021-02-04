@@ -139,10 +139,13 @@ public class CommunicationServicePlugin extends CordovaPlugin {
                     if (isEnable != null)
                         this.enable(isEnable);
                     break;
+                case "startService":
+                    this.startService();
+                    break;
                 case "connect":
-                   if(true)
-			break; 
-		   String uri = options.getString("uri");
+                    if(true)
+                        break;
+                    String uri = options.getString("uri");
                     LogUtils.printLog(tag,"connect uri: " + uri);
                     this.callbackContext = callbackContext;
                     if (uri != null)

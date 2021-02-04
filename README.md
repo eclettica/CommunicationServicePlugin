@@ -1,1 +1,1 @@
-# WebsocketServicePlugin
+# CommunicationServicePlugin
