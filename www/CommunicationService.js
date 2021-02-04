@@ -13,6 +13,14 @@ CommunicationServicePlugin.prototype._pluginInitialize = function() {
   }
 }
 
+CommunicationServicePlugin.prototype.on = function(event, data) {
+  console.log('CommunicationService ' + event + " " + data);
+}
+
+CommunicationServicePlugin.prototype.fireEvent = function(event, data) {
+  console.log('CommunicationService ' + event + " " + data);
+}
+
 CommunicationServicePlugin.prototype.onIncomingCall = function(callObj) {
   console.log('GESTIONE CALL', callObj);
 }
@@ -86,6 +94,7 @@ CommunicationServicePlugin.prototype.checkBackground = function(successCallback,
   if(successCallback)
     successCallback(bool);
 }
+
 
 // Installation constructor that binds ToastyPlugin to window
 CommunicationServicePlugin.install = function() {

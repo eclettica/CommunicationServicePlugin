@@ -19,11 +19,18 @@ import it.linup.cordova.plugin.utils.LogUtils;
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaPlugin;
 import org.apache.cordova.PluginResult;
+import org.apache.cordova.CordovaInterface;
+import org.apache.cordova.CordovaWebView;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import static android.content.Context.BIND_AUTO_CREATE;
+
+import io.sqlc.SQLiteAndroidDatabaseCallback;
+
+
+import io.sqlc.SQLiteManager;
 
 
 //import com.facebook.react.modules.core.DeviceEventManagerModule;
@@ -38,10 +45,10 @@ public class CommunicationServicePlugin extends CordovaPlugin {
     private String tag = "==:== CommunicationServicePlugin :";
 
     // Event types for callbacks
-    private enum Event { ACTIVATE, DEACTIVATE, FAILURE }
+    public enum Event { ACTIVATE, DEACTIVATE, FAILURE, MESSAGE }
 
     // Plugin namespace
-    private static final String JS_NAMESPACE = "cordova.plugin.CommunicationServicePlugin";
+    private static final String JS_NAMESPACE = "window.plugins.CommunicationServicePlugin";
 
     private static Handler m_handler;
     private Runnable m_handlerTask;
@@ -62,7 +69,10 @@ public class CommunicationServicePlugin extends CordovaPlugin {
     // Service that keeps the app awake
     private CommunicationService service;
 
-     // Used to (un)bind the service to with the activity
+    private SQLiteManager sqliteManager = SQLiteManager.instance();
+
+
+    // Used to (un)bind the service to with the activity
      private final ServiceConnection connection = new ServiceConnection()
      {
          @Override
@@ -70,6 +80,7 @@ public class CommunicationServicePlugin extends CordovaPlugin {
          {
              ForegroundBinder binder = (ForegroundBinder) service;
              CommunicationServicePlugin.this.service = binder.getService();
+             CommunicationServicePlugin.this.service.setPlugin(CommunicationServicePlugin.this);
          }
  
          @Override
@@ -82,9 +93,58 @@ public class CommunicationServicePlugin extends CordovaPlugin {
      // Flag indicates if the service is bind
      private boolean isBind = false;
 
+    /**
+     * Bind the activity to a background service and put them into foreground
+     * state.
+     */
+    private void startService()
+    {
+
+        if (isBind)
+            return;
+
+        Activity context = cordova.getActivity();
+
+        Intent intent = new Intent(context, CommunicationService.class);
+        try {
+            context.bindService(intent, connection, BIND_AUTO_CREATE);
+            fireEvent(Event.ACTIVATE, null);
+            context.startService(intent);
+            isBind = true;
+        } catch (Exception e) {
+            fireEvent(Event.FAILURE, String.format("'%s'", e.getMessage()));
+        }
+
+
+    }
+
+    /**
+     * Bind the activity to a background service and put them into foreground
+     * state.
+     */
+    private void stopService()
+    {
+        Activity context = cordova.getActivity();
+        Intent intent    = new Intent(context, CommunicationService.class);
+
+        if (!isBind) return;
+
+        fireEvent(Event.DEACTIVATE, null);
+        context.unbindService(connection);
+        context.stopService(intent);
+
+        isBind = false;
+    }
+
     public void kill() {
         m_handler.removeCallbacks(m_handlerTask);
         m_handler = null;
+    }
+
+    @Override
+    public void initialize(CordovaInterface cordova, CordovaWebView webView) {
+        super.initialize(cordova, webView);
+        this.startService();
     }
 
     /**
@@ -109,6 +169,9 @@ public class CommunicationServicePlugin extends CordovaPlugin {
     @Override
     public void onStop () {
         //clearKeyguardFlags(cordova.getActivity());
+        if(isBind) {
+            this.service.setPlugin(null);
+        }
     }
 
     /**
@@ -120,7 +183,11 @@ public class CommunicationServicePlugin extends CordovaPlugin {
     public void onResume (boolean multitasking)
     {
         active = true;
+        this.startService();
         //stopService();
+        if(isBind) {
+            this.service.setPlugin(this);
+        }
     }
 
     @Override
@@ -143,6 +210,36 @@ public class CommunicationServicePlugin extends CordovaPlugin {
                     this.startService();
                     break;
                 case "connect":
+                    CommunicationService.instance().startActivity();
+
+                    if(sqliteManager.needContext()) {
+                        sqliteManager.setContext(this.cordova.getActivity());
+                    }
+                    options = new JSONObject();
+                    options.put("name", "test.db");
+                    String dbname = options.getString("name");
+                    LogUtils.printLog(tag, "starting database...  " + dbname);
+                    sqliteManager.startDatabase(dbname, options, null);
+                    LogUtils.printLog(tag, "execute query  " + dbname);
+                    sqliteManager.executeSingle(dbname, "SELECT count(*) AS mycount FROM DemoTable", null, new SQLiteAndroidDatabaseCallback() {
+                        public void error(String error){
+                            LogUtils.printLog(tag, "dbquery callback error " + error);
+                        }
+                        public void success(JSONArray arr) {
+                            for (int i = 0 ; i < arr.length(); i++) {
+                                try {
+                                    JSONObject obj = arr.getJSONObject(i);
+                                    LogUtils.printLog(tag, "res  " + i + ": " + obj.toString());
+                                } catch(Exception e) {
+                                    LogUtils.printLog(tag, "cannot get response for  " + i );
+                                }
+                            }
+                        }
+                    });
+
+                    /*Context context = cordova.getActivity().getApplicationContext();
+                    Intent intent = new Intent(context, IncomingCallActivity.class);
+                    this.cordova.getActivity().startActivity(intent);*/
                     if(true)
                         break;
                     String uri = options.getString("uri");
@@ -171,6 +268,9 @@ public class CommunicationServicePlugin extends CordovaPlugin {
                     this.callbackContext = null;
                     break;
                 case "show": {
+
+                    if(true)
+                        break;
                     String message = options.getString("message");
                     String duration = options.getString("duration");
                     this.show(message, duration);
@@ -270,46 +370,7 @@ public class CommunicationServicePlugin extends CordovaPlugin {
         //WebsocketService.instance().connect(uri);
     }
 
-     /**
-     * Bind the activity to a background service and put them into foreground
-     * state.
-     */
-    private void startService()
-    {
-        Activity context = cordova.getActivity();
 
-        if (isBind)
-            return;
-
-        Intent intent = new Intent(context, CommunicationService.class);
-        try {
-            context.bindService(intent, connection, BIND_AUTO_CREATE);
-            fireEvent(Event.ACTIVATE, null);
-            context.startService(intent);
-        } catch (Exception e) {
-            fireEvent(Event.FAILURE, String.format("'%s'", e.getMessage()));
-        }
-
-        isBind = true;
-    }
-
-    /**
-     * Bind the activity to a background service and put them into foreground
-     * state.
-     */
-    private void stopService()
-    {
-        Activity context = cordova.getActivity();
-        Intent intent    = new Intent(context, CommunicationService.class);
-
-        if (!isBind) return;
-
-        fireEvent(Event.DEACTIVATE, null);
-        context.unbindService(connection);
-        context.stopService(intent);
-
-        isBind = false;
-    }
 
 
     public void updateNotification(Boolean status) {
@@ -390,21 +451,18 @@ public class CommunicationServicePlugin extends CordovaPlugin {
     }
 
     /**
-     * Fire vent with some parameters inside the web view.
+     * Fire event with some parameters inside the web view.
      *
      * @param event The name of the event
      * @param params Optional arguments for the event
      */
-    private void fireEvent (Event event, String params)
+    public void fireEvent (Event event, String params)
     {
         String eventName = event.name().toLowerCase();
         Boolean active   = event == Event.ACTIVATE;
 
-        String str = String.format("%s._setActive(%b)",
-                JS_NAMESPACE, active);
-
-        str = String.format("%s;%s.on('%s', %s)",
-                str, JS_NAMESPACE, eventName, params);
+        String str = String.format("%s.on('%s', %s)",
+                JS_NAMESPACE, eventName, params);
 
         str = String.format("%s;%s.fireEvent('%s',%s);",
                 str, JS_NAMESPACE, eventName, params);

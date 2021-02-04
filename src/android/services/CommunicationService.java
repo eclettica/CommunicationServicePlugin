@@ -18,6 +18,11 @@ import android.os.Binder;
 
 //import com.idra.modules.DbSql.DBManager;
 //import com.idra.modules.DbSql.DbCustomLogic;
+
+import it.linup.cordova.plugin.communication.IncomingCallActivity;
+import it.linup.cordova.plugin.communication.CommunicationServicePlugin;
+import it.linup.cordova.plugin.communication.CommunicationServicePlugin.Event;
+
 import it.linup.cordova.plugin.utils.LogUtils;
 
 import it.linup.cordova.plugin.utils.FileUtils;
@@ -31,6 +36,9 @@ import org.json.JSONObject;
 import java.io.File;
 import java.net.URI;
 import java.util.Date;
+
+import io.sqlc.SQLiteManager;
+
 
 //import org.pgsqlite.SQLitePlugin;
 //import org.pgsqlite.SQLitePluginPackage;
@@ -46,13 +54,20 @@ public class CommunicationService extends Service implements WebsocketListnerInt
     private Runnable m_handlerTask;
     public static boolean reconnect = true;
     public  static Context mContext;
+    private int counter = 0;
+
+    private CommunicationServicePlugin _plugin = null;
+
 
     public static String tag="COMMUNICATIONSERVICE - CommunicationService";
 
 	// Binder given to clients
     private final IBinder binder = new ForegroundBinder();
 
-     /**
+    private SQLiteManager sqliteManager = SQLiteManager.instance();
+
+
+    /**
      * Class used for the client Binder.  Because we know this service always
      * runs in the same process as its clients, we don't need to deal with IPC.
      */
@@ -73,6 +88,10 @@ public class CommunicationService extends Service implements WebsocketListnerInt
      */
     public CommunicationService() {
 
+    }
+
+    public void setPlugin(CommunicationServicePlugin plugin) {
+        this._plugin = plugin;
     }
 
 
@@ -97,13 +116,14 @@ public class CommunicationService extends Service implements WebsocketListnerInt
         super.onCreate();
         mContext = getApplicationContext();
         wl.acquire();
-
         LogUtils.printLog(tag," >>>onCreate()");
+        WebsocketService.instance().addListner(this);
     }
 
     @Override
     public IBinder onBind(Intent intent) {
-	return binder;
+
+        return binder;
     }
 
     /*@Override
@@ -126,7 +146,7 @@ public class CommunicationService extends Service implements WebsocketListnerInt
 
     private void _onStartCommand(){
         LogUtils.printLog(tag," onStartCommand ");
-	WebsocketService.instance().addListner(this);
+	    WebsocketService.instance().addListner(this);
     }
 
     @Override
@@ -140,40 +160,22 @@ public class CommunicationService extends Service implements WebsocketListnerInt
         super.onDestroy();
         LogUtils.printLog(tag," onDestroy "  + reconnect);
     }
-/*
-    private boolean isMyServiceRunning(Class<?> serviceClass) {
-        ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
-        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
-            if (serviceClass.getName().equals(service.service.getClassName())) {
-                return true;
-            }
-        }
-        return false;
-    }
 
-    public void  stopMonitorSevice(){
-        Intent servicetIntent = new Intent(mContext, CommunicationService.class);
-        stopService(servicetIntent);
+    public void startActivity(){
+        //Context context = cordova.getActivity().getApplicationContext();
+        Intent intent = new Intent(mContext, IncomingCallActivity.class);
+        mContext.startActivity(intent);
     }
-
-    public void  startMonitorSevice(){
-        LogUtils.printLog(tag," startMonitorSevice ");
-        Intent serviceIntent = new Intent(mContext, CommunicationService.class);
-        startService(serviceIntent);
-    }
-
-    private void restartApp() {
-        Intent i = getBaseContext().getPackageManager().
-                getLaunchIntentForPackage(getBaseContext().getPackageName());
-        i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        startActivity(i);
-    }
-
-*/
 
     public void onEvent(String event, String data) {
         LogUtils.printLog(tag, event + " " + data);
+        this.counter++;
+        if(this.counter == 2) {
+            this.startActivity();
+        }
+        if(this._plugin != null) {
+            this._plugin.fireEvent(CommunicationServicePlugin.Event.MESSAGE, data);
+        }
     }
 
 }
