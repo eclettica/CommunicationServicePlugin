@@ -22,6 +22,8 @@ import android.os.Binder;
 import it.linup.cordova.plugin.communication.IncomingCallActivity;
 import it.linup.cordova.plugin.communication.CommunicationServicePlugin;
 import it.linup.cordova.plugin.communication.CommunicationServicePlugin.Event;
+import it.linup.cordova.plugin.communication.services.CommunicationServiceSqlUtil;
+import it.linup.cordova.plugin.communication.services.CommunicationMessageService;
 
 import it.linup.cordova.plugin.utils.LogUtils;
 
@@ -38,6 +40,9 @@ import java.net.URI;
 import java.util.Date;
 
 import io.sqlc.SQLiteManager;
+
+import io.sqlc.SQLiteAndroidDatabaseCallback;
+
 
 
 //import org.pgsqlite.SQLitePlugin;
@@ -91,6 +96,7 @@ public class CommunicationService extends Service implements WebsocketListnerInt
     }
 
     public void setPlugin(CommunicationServicePlugin plugin) {
+
         this._plugin = plugin;
     }
 
@@ -118,6 +124,8 @@ public class CommunicationService extends Service implements WebsocketListnerInt
         wl.acquire();
         LogUtils.printLog(tag," >>>onCreate()");
         WebsocketService.instance().addListner(this);
+
+
     }
 
     @Override
@@ -147,6 +155,30 @@ public class CommunicationService extends Service implements WebsocketListnerInt
     private void _onStartCommand(){
         LogUtils.printLog(tag," onStartCommand ");
 	    WebsocketService.instance().addListner(this);
+        String dbName = FileUtils.readFromFile("dbName", this);
+        if(dbName != null && !dbName.trim().equals("")) {
+            this.startDatabase(dbName, null);
+        }
+    }
+
+    public void setDbName(String dbName) {
+        if(dbName != null && !dbName.trim().equals(""))
+            FileUtils.writeToFile("dbName", dbName, mContext);
+
+        this.startDatabase(dbName, null);
+    }
+
+    private void startDatabase(String dbName, JSONObject options) {
+        if(dbName == null)
+            return;
+        if(options == null) {
+            options = new JSONObject();
+            try {
+                options.put("name", dbName);
+            } catch(Exception e){}
+        }
+
+        CommunicationServiceSqlUtil.setDbName(dbName, options);
     }
 
     @Override
@@ -169,13 +201,133 @@ public class CommunicationService extends Service implements WebsocketListnerInt
 
     public void onEvent(String event, String data) {
         LogUtils.printLog(tag, event + " " + data);
-        this.counter++;
+        /*this.counter++;
         if(this.counter == 2) {
             this.startActivity();
+        }*/
+        switch (event) {
+            case "onWebsocketConnect":
+                this.manageOnConnection();
+                break;
+            case "onWebsocketMessage":
+                this.manageMessage(data);
+                break;
+            case "onWebsocketException":
+                break;
+            case "onWebsocketClose":
+                break;
+            default:
+                LogUtils.printLog(tag, event + " event not found");
         }
         if(this._plugin != null) {
             this._plugin.fireEvent(CommunicationServicePlugin.Event.MESSAGE, data);
         }
+    }
+
+    /**
+     * Questo metodo viene chiamato a valle della connessione alla websocket.
+     * Qui possono essere inviate le chiamate per richiedere al server nuovi messaggi
+     * e per richiedere la lista aggiornata degli utenti.
+     * Inoltre qui si può innescare il controllo su eventuali notifiche [lettura, ricezione]
+     * e messaggi non ancora inviati
+     */
+    private void manageOnConnection() {
+        this.sentQueued();
+        this.askForMessages();
+        this.reloadUserList();
+    }
+
+    /**
+     * Questo metodo deve effettuare
+     * 1 - la ricerca di messaggi non inviati e inviarli;
+     * 2 - la ricerca di messaggi ricevuti non notificati e inviarli;
+     * 3 - la ricerca di messaggi letti non notificati e inviarli;
+     */
+    private void sentQueued() {
+
+    }
+
+    /**
+     * Questo metodo serve per richiedere dal server eventuali messaggi non ricevuti
+     */
+    private void askForMessages() {
+
+    }
+
+    /**
+     * Questo metodo serve per aggiornare la lista degli utenti
+     */
+    private void reloadUserList() {
+
+    }
+
+    private void manageMessage(String message) {
+
+        JSONObject jobj = null;
+
+
+        try {
+            try {
+                jobj = new JSONObject(message);
+            } catch (Exception e) {
+                if (message.equals("not logged")) {
+                    jobj = new JSONObject();
+                    jobj.put("message", message);
+                    jobj.put("event", message);
+                }
+            }
+            String event = jobj.getString("event");
+
+            switch (event) {
+                case "newmessage":
+                // GESTIONE  DEL CASO IN CUI LA MAIN ACTIVITY  E' STATA UCCISA O IN BACKHGROUND
+                if (_plugin == null || !_plugin.active)
+                {
+                    try {
+                        Vibrator v = (Vibrator) mContext.getSystemService(Context.VIBRATOR_SERVICE);
+                        v.vibrate(1000);
+                        LogUtils.printLog(tag," MESSAGE RECEIVED");
+                    } catch (Exception e) {
+                        LogUtils.printLog(tag,"ACTIVITY ERROR ON  MESSAGE RECEIVED VIBRATION");
+                    }
+
+                }
+                // FINE GESTIONE  DEL CASO IN CUI LA MAIN ACTIVITY  E' STATA UCCISA O IN BACKHGROUND
+
+                this.addMessage(jobj);
+
+                break;
+
+            }
+        } catch(JSONException jex) {
+
+        }
+
+    }
+
+    /**
+     * In questo metodo devono essere gestiti tutti i passaggi legati al flusso di ricezione di un messaggio
+     * - salvare il messaggio e flaggarlo come ricevuto
+     * - cercare la conversazione relativa e, qualora non esiste, crearla;
+     * - calcolare e aggiornare il numero di messaggi non letti per la conversazione
+     * e il testo dell'ultimo messaggio
+     * - generare gli eventi per comunicare alla parte JS dell'arrivo di un messaggio e
+     * il nuovo valore del contatore;
+     * - inviare al backend un messaggio di avvenuta ricezione
+     * @param jobj
+     */
+    private void addMessage(JSONObject jobj) {
+        //String insertMessageQuery = CommunicationServiceSqlUtil.getInsertMessageQuery();
+        //salvare il messaggio e flaggarlo come ricevuto
+        CommunicationMessageService.saveMessage(jobj, new SQLiteAndroidDatabaseCallback(){
+            public void error(String error){
+                LogUtils.printLog(tag, "dbquery callback error " + error);
+            }
+            public void success(JSONArray arr) {
+                //cercare la conversazione relativa e, qualora non esiste, crearla
+            }
+        });
+
     }
 
 }

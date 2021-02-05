@@ -14,11 +14,11 @@ CommunicationServicePlugin.prototype._pluginInitialize = function() {
 }
 
 CommunicationServicePlugin.prototype.on = function(event, data) {
-  console.log('CommunicationService ' + event + " " + data);
+  console.log('CommunicationService ', event, data);
 }
 
 CommunicationServicePlugin.prototype.fireEvent = function(event, data) {
-  console.log('CommunicationService ' + event + " " + data);
+  console.log('CommunicationService ',event, data);
 }
 
 CommunicationServicePlugin.prototype.onIncomingCall = function(callObj) {

@@ -28,8 +28,6 @@ import org.json.JSONObject;
 import static android.content.Context.BIND_AUTO_CREATE;
 
 import io.sqlc.SQLiteAndroidDatabaseCallback;
-
-
 import io.sqlc.SQLiteManager;
 
 
@@ -169,9 +167,10 @@ public class CommunicationServicePlugin extends CordovaPlugin {
     @Override
     public void onStop () {
         //clearKeyguardFlags(cordova.getActivity());
-        if(isBind) {
+        if(isBind && this.service != null) {
             this.service.setPlugin(null);
         }
+        active = false;
     }
 
     /**
@@ -185,7 +184,7 @@ public class CommunicationServicePlugin extends CordovaPlugin {
         active = true;
         this.startService();
         //stopService();
-        if(isBind) {
+        if(isBind && this.service != null) {
             this.service.setPlugin(this);
         }
     }
@@ -215,7 +214,10 @@ public class CommunicationServicePlugin extends CordovaPlugin {
                     if(sqliteManager.needContext()) {
                         sqliteManager.setContext(this.cordova.getActivity());
                     }
-                    options = new JSONObject();
+
+                    CommunicationService.instance().setDbName("test.db");
+
+                    /*options = new JSONObject();
                     options.put("name", "test.db");
                     String dbname = options.getString("name");
                     LogUtils.printLog(tag, "starting database...  " + dbname);
@@ -235,7 +237,7 @@ public class CommunicationServicePlugin extends CordovaPlugin {
                                 }
                             }
                         }
-                    });
+                    });*/
 
                     /*Context context = cordova.getActivity().getApplicationContext();
                     Intent intent = new Intent(context, IncomingCallActivity.class);
