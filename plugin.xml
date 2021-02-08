@@ -17,6 +17,7 @@
   
     <!-- dependencies -->
     <dependency id="cordova-plugin-linupwebsocketservice" url="https://github.com/eclettica/WebsocketServicePlugin"/>
+    <dependency id="cordova-sqlite-storage" url="https://github.com/eclettica/cordova-sqlite-storage" />
 
     <js-module src="www/CommunicationService.js" name="CommunicationServicePlugin">
         <clobbers target="window.plugins.CommunicationServicePlugin" />
