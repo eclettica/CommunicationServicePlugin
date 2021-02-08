@@ -451,13 +451,16 @@ public class CommunicationService extends Service implements WebsocketListnerInt
                 ret.name = jObj.getString("name");
                 ret.surname = jObj.getString("surname");
                 ret.status = jObj.getString("status");
-                ret.sessionId = jObj.getString("sessionId");
+                ret.sessionId = jObj.optString("sessionId");
                 ret.sessionIds = new LinkedList();
-                JSONArray sessionArray = jObj.getJSONArray("sessionIds");
-                int length = sessionArray.length();
-                for(int i=0; i<length; i++) {
-                    ret.sessionIds.add(sessionArray.getString(i));
+                JSONArray sessionArray = jObj.optJSONArray("sessionIds");
+                if(sessionArray != null) {
+                    int length = sessionArray.length();
+                    for(int i=0; i<length; i++) {
+                        ret.sessionIds.add(sessionArray.getString(i));
+                    }
                 }
+                
                 return ret;
             } catch(JSONException ex) {
                 return null;
