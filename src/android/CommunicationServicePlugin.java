@@ -474,6 +474,21 @@ public class CommunicationServicePlugin extends CordovaPlugin {
         cordova.getActivity().runOnUiThread(() -> webView.loadUrl("javascript:" + js));
     }
 
+    public void generateEvent (String eventName, JSONObject params) {
+        this.generateEvent(eventName, params.toString());
+    }
+
+    public void generateEvent (String eventName, String params)
+    {
+
+        String str = String.format("%s.onEvent('%s',%s);",
+                JS_NAMESPACE, eventName, params);
+
+        final String js = str;
+
+        cordova.getActivity().runOnUiThread(() -> webView.loadUrl("javascript:" + js));
+    }
+
     public Class getMainActivityClass() {
         Class mainActivity;
         Context context = getApplicationContext();

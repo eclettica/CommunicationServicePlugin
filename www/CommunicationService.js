@@ -17,6 +17,10 @@ CommunicationServicePlugin.prototype.on = function(event, data) {
   console.log('CommunicationService ', event, data);
 }
 
+CommunicationServicePlugin.prototype.onEvent = function(event, data) {
+  console.log('CommunicationService ', event, data);
+}
+
 CommunicationServicePlugin.prototype.fireEvent = function(event, data) {
   console.log('CommunicationService ',event, data);
 }
@@ -25,20 +29,29 @@ CommunicationServicePlugin.prototype.onIncomingCall = function(callObj) {
   console.log('GESTIONE CALL', callObj);
 }
 
-CommunicationServicePlugin.prototype.initListners = function(overrides) {
- 
+CommunicationServicePlugin.prototype.addListner = function(eventName, listner) {
+  if(!eventName || !listner)
+    return;
+ if(!this._listners[eventName]) {
+   this._listners[eventName] = [];
+ }
+ if(!this._listners[eventName].includes(listner))
+    this._listners[eventName].push(listner)
 }
 
-var _defaultListners =
+CommunicationServicePlugin.prototype.removeListner =function(eventName, listner) {
+  if(!eventName || !listner)
+    return;
+  if(!this._listners[eventName])
+    return;
+  var idx = this._listners[eventName].indexOf(listner);
+  if(idx > -1)
+    this._listners[eventName].splice(idx, 1);
+}
+
+var _listners =
 {
-    title:   'WebSocketService is running',
-    text:    '.......',
-    bigText: false,
-    resume:  true,
-    silent:  false,
-    hidden:  true,
-    color:   undefined,
-    icon:    'ic_launcher'
+    
 };
 
 CommunicationServicePlugin.prototype.setDefaults = function(overrides) {

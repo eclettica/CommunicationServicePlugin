@@ -38,6 +38,10 @@ import org.json.JSONObject;
 import java.io.File;
 import java.net.URI;
 import java.util.Date;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.List;
+import java.util.LinkedList;
 
 import io.sqlc.SQLiteManager;
 
@@ -63,8 +67,14 @@ public class CommunicationService extends Service implements WebsocketListnerInt
 
     private CommunicationServicePlugin _plugin = null;
 
+    public static final String USERSLIST = "operatorilist";
+    public static final String UPDATEUSERS = "updateusers";
+
+    private Map<String, UserSessionFacade> users;
+
 
     public static String tag="COMMUNICATIONSERVICE - CommunicationService";
+
 
 	// Binder given to clients
     private final IBinder binder = new ForegroundBinder();
@@ -92,7 +102,7 @@ public class CommunicationService extends Service implements WebsocketListnerInt
      *
      */
     public CommunicationService() {
-
+        this.users = new HashMap<String, UserSessionFacade>();
     }
 
     public void setPlugin(CommunicationServicePlugin plugin) {
@@ -152,13 +162,14 @@ public class CommunicationService extends Service implements WebsocketListnerInt
     }
 
 
-    private void _onStartCommand(){
+    private void _onStartCommand() {
         LogUtils.printLog(tag," onStartCommand ");
 	    WebsocketService.instance().addListner(this);
         String dbName = FileUtils.readFromFile("dbName", this);
         if(dbName != null && !dbName.trim().equals("")) {
             this.startDatabase(dbName, null);
         }
+        this.reloadUserList();
     }
 
     public void setDbName(String dbName) {
@@ -254,12 +265,6 @@ public class CommunicationService extends Service implements WebsocketListnerInt
 
     }
 
-    /**
-     * Questo metodo serve per aggiornare la lista degli utenti
-     */
-    private void reloadUserList() {
-
-    }
 
     private void manageMessage(String message) {
 
@@ -279,6 +284,9 @@ public class CommunicationService extends Service implements WebsocketListnerInt
             String event = jobj.getString("event");
 
             switch (event) {
+                case UPDATEUSERS:
+                    this.updateUsers(jobj.getJSONArray("data"));
+                    break;
                 case "newmessage":
                 // GESTIONE  DEL CASO IN CUI LA MAIN ACTIVITY  E' STATA UCCISA O IN BACKHGROUND
                 if (_plugin == null || !_plugin.active)
@@ -328,6 +336,126 @@ public class CommunicationService extends Service implements WebsocketListnerInt
             }
         });
 
+    }
+
+
+    /**
+     * GESTIONE OPERATORI
+     */
+
+    /**
+     * Questo metodo viene invocato per effettuare verso il backend una richiesta
+     * degli operatori attualmente connessi
+     */
+
+    public void reloadUserList(){
+        if(WebsocketService.instance().getIsConnected()) {
+            WebsocketService.instance().asyncSend("{\"event\":\""+ USERSLIST + "\",\"data\":\"\"}");
+        }
+    }
+
+    /**
+     * Questo metodo viene invocato ogni volta che dal backend arriva la nuova lista degli utenti
+     * @param users
+     */
+    public void updateUsers(JSONArray users) {
+        this.users.clear();
+        if(users == null)
+            return;
+        int length = users.length();
+        Map<String, UserSessionFacade> userMap = new HashMap<String, UserSessionFacade>();
+        for(int i=0; i<length; i++) {
+            try {
+                JSONObject jObj = users.getJSONObject(i);
+                UserSessionFacade usf = UserSessionFacade.buildFromJson(jObj);
+                if (usf == null)
+                    continue;
+                userMap.put(usf.userId, usf);
+            } catch(JSONException ex) {
+                continue;
+            }
+        }
+        this.users = userMap;
+
+        this.comunicateUsers();
+    }
+
+    public void comunicateUsers() {
+        if(this._plugin != null) {
+            this._plugin.generateEvent(UPDATEUSERS, getUsersJSONObject());
+        }
+    }
+
+    public JSONObject getUsersJSONObject() {
+        JSONObject ret = new JSONObject();
+        if(this.users != null) {
+            for(String userId : this.users.keySet()) {
+                if(userId == null)
+                    continue;
+                JSONObject jo = this.users.get(userId).toJsonObject();
+                if(jo == null)
+                    continue;
+                try {
+                    ret.put(userId, jo);
+                } catch(JSONException ex) {
+                    continue;
+                }
+            }
+        }
+        return ret;
+    }
+
+    public static class UserSessionFacade {
+
+        public String userId;
+
+        public String name;
+
+        public String surname;
+
+        public String status;
+
+        public String sessionId;
+
+        public List<String> sessionIds;
+
+        public JSONObject toJsonObject() {
+            try {
+                JSONObject ret = new JSONObject();
+                ret.put("userId", userId);
+                ret.put("name", name);
+                ret.put("surname", surname);
+                ret.put("status", status);
+                ret.put("sessionId", sessionId);
+                JSONArray arr = new JSONArray();
+                for (String s : sessionIds)
+                    arr.put(s);
+                ret.put("sessionIds", arr);
+                return ret;
+            } catch(JSONException ex) {
+                return null;
+            }
+        }
+
+        public static UserSessionFacade buildFromJson(JSONObject jObj) {
+            UserSessionFacade ret = new UserSessionFacade();
+            try {
+                ret.userId = jObj.getString("userId");
+                ret.name = jObj.getString("name");
+                ret.surname = jObj.getString("surname");
+                ret.status = jObj.getString("status");
+                ret.sessionId = jObj.getString("sessionId");
+                ret.sessionIds = new LinkedList();
+                JSONArray sessionArray = jObj.getJSONArray("sessionIds");
+                int length = sessionArray.length();
+                for(int i=0; i<length; i++) {
+                    ret.sessionIds.add(sessionArray.getString(i));
+                }
+                return ret;
+            } catch(JSONException ex) {
+                return null;
+            }
+        }
     }
 
 }
