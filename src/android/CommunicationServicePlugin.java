@@ -167,6 +167,18 @@ public class CommunicationServicePlugin extends CordovaPlugin {
     @Override
     public void onStop () {
         //clearKeyguardFlags(cordova.getActivity());
+        /*if(isBind && this.service != null) {
+            this.service.setPlugin(null);
+        }*/
+        active = false;
+    }
+
+    /**
+     * Called when the activity is finishing.
+     */
+    @Override
+    public void onDestroy () {
+        //clearKeyguardFlags(cordova.getActivity());
         if(isBind && this.service != null) {
             this.service.setPlugin(null);
         }
@@ -208,6 +220,12 @@ public class CommunicationServicePlugin extends CordovaPlugin {
                 case "startService":
                     this.startService();
                     break;
+                case "loadUsers":
+                    this.loadUsers(callbackContext);
+                    break;
+                case "reloadUsers":
+                    this.reloadUsers(callbackContext);
+                    break;
                 case "connect":
                     CommunicationService.instance().startActivity();
 
@@ -216,7 +234,10 @@ public class CommunicationServicePlugin extends CordovaPlugin {
                     }
 
                     CommunicationService.instance().setDbName("test.db");
-
+                {
+                    PluginResult pluginResult = new PluginResult(PluginResult.Status.OK);
+                    callbackContext.sendPluginResult(pluginResult);
+                }
                     /*options = new JSONObject();
                     options.put("name", "test.db");
                     String dbname = options.getString("name");
@@ -329,7 +350,17 @@ public class CommunicationServicePlugin extends CordovaPlugin {
     {
     }
 
+    public void loadUsers(CallbackContext cbc) {
+        JSONObject jo = this.service.getUsersJSONObject();
+        PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, jo);
+        cbc.sendPluginResult(pluginResult);
+    }
 
+    public void reloadUsers(CallbackContext cbc) {
+        this.service.reloadUserList();
+        PluginResult pluginResult = new PluginResult(PluginResult.Status.OK);
+        cbc.sendPluginResult(pluginResult);
+    }
 
     public String getCallName(String from) {
 

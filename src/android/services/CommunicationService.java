@@ -65,9 +65,11 @@ public class CommunicationService extends Service implements WebsocketListnerInt
     public  static Context mContext;
     private int counter = 0;
 
+    private String currentSessionId;
+
     private CommunicationServicePlugin _plugin = null;
 
-    public static final String USERSLIST = "operatorilist";
+    public static final String USERSLIST = "userslist";
     public static final String UPDATEUSERS = "updateusers";
 
     private Map<String, UserSessionFacade> users;
@@ -212,10 +214,11 @@ public class CommunicationService extends Service implements WebsocketListnerInt
 
     public void onEvent(String event, String data) {
         LogUtils.printLog(tag, event + " " + data);
-        /*this.counter++;
+        this.counter++;
         if(this.counter == 2) {
-            this.startActivity();
-        }*/
+            this.reloadUserList();
+            this.counter = 0;
+        }
         switch (event) {
             case "onWebsocketConnect":
                 this.manageOnConnection();
@@ -279,6 +282,9 @@ public class CommunicationService extends Service implements WebsocketListnerInt
                     jobj = new JSONObject();
                     jobj.put("message", message);
                     jobj.put("event", message);
+                } else {
+                    this.currentSessionId = message;
+                    return;
                 }
             }
             String event = jobj.getString("event");
@@ -349,9 +355,10 @@ public class CommunicationService extends Service implements WebsocketListnerInt
      */
 
     public void reloadUserList(){
-        if(WebsocketService.instance().getIsConnected()) {
-            WebsocketService.instance().asyncSend("{\"event\":\""+ USERSLIST + "\",\"data\":\"\"}");
-        }
+        LogUtils.printLog(tag, "reloadUserList");
+        //if(WebsocketService.instance().getIsConnected()) {
+            WebsocketService.instance().asyncSend("{\"event\":\""+ USERSLIST + "\",\"data\":{}}");
+        //}
     }
 
     /**
@@ -376,7 +383,7 @@ public class CommunicationService extends Service implements WebsocketListnerInt
             }
         }
         this.users = userMap;
-
+        LogUtils.printLog(tag, "updateUsers... comunicate...");
         this.comunicateUsers();
     }
 

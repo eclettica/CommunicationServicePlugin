@@ -1,6 +1,6 @@
 // Empty constructor
 function CommunicationServicePlugin() {
-
+  this._listners = {};
 }
 
 CommunicationServicePlugin.prototype._pluginInitialize = function() {
@@ -17,8 +17,15 @@ CommunicationServicePlugin.prototype.on = function(event, data) {
   console.log('CommunicationService ', event, data);
 }
 
-CommunicationServicePlugin.prototype.onEvent = function(event, data) {
-  console.log('CommunicationService ', event, data);
+CommunicationServicePlugin.prototype.onEvent = function(eventName, data) {
+  console.log('CommunicationService ', eventName, data);
+  if(!this._listners[eventName])
+    return;
+  for (let index = 0; index < this._listners[eventName].length; index++) {
+    const element = this._listners[eventName][index];
+    if(element)
+      element(data);
+  }
 }
 
 CommunicationServicePlugin.prototype.fireEvent = function(event, data) {
@@ -27,6 +34,16 @@ CommunicationServicePlugin.prototype.fireEvent = function(event, data) {
 
 CommunicationServicePlugin.prototype.onIncomingCall = function(callObj) {
   console.log('GESTIONE CALL', callObj);
+}
+
+CommunicationServicePlugin.prototype.loadUsers = function(successCallback, errorCallback) {
+  var options = {};
+  cordova.exec(successCallback, errorCallback, 'CommunicationServicePlugin', 'loadUsers', [options]);
+}
+
+CommunicationServicePlugin.prototype.reloadUsers = function(successCallback, errorCallback) {
+  var options = {};
+  cordova.exec(successCallback, errorCallback, 'CommunicationServicePlugin', 'reloadUsers', [options]);
 }
 
 CommunicationServicePlugin.prototype.addListner = function(eventName, listner) {

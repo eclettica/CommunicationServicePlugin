@@ -16,7 +16,7 @@
     </engines>
   
     <!-- dependencies -->
-    <dependency id="cordova-plugin-linupwebsocketservice" />
+    <dependency id="cordova-plugin-linupwebsocketservice" url="https://github.com/eclettica/WebsocketServicePlugin"/>
 
     <js-module src="www/CommunicationService.js" name="CommunicationServicePlugin">
         <clobbers target="window.plugins.CommunicationServicePlugin" />
@@ -45,6 +45,8 @@
         <!-- <source-file src="src/android/utils/FileUtils.java" target-dir="src/it/linup/cordova/plugin/utils" /> -->
         <!-- <source-file src="src/android/utils/LogUtils.java" target-dir="src/it/linup/cordova/plugin/utils" /> -->
         <source-file src="src/android/services/CommunicationService.java" target-dir="src/it/linup/cordova/plugin/communication/services" />
+        <source-file src="src/android/services/CommunicationMessageService.java" target-dir="src/it/linup/cordova/plugin/communication/services" />
+        <source-file src="src/android/services/CommunicationServiceSqlUtil.java" target-dir="src/it/linup/cordova/plugin/communication/services" />
         <!-- <source-file src="src/android/services/NotificationService.java" target-dir="src/it/linup/cordova/plugin/services" /> -->
         <source-file src="src/android/IncomingCallActivity.java" target-dir="src/it/linup/cordova/plugin/communication" />
         <source-file src="src/android/incoming_call.xml" target-dir="res/layout"/>
