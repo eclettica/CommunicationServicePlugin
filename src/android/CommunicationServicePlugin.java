@@ -143,6 +143,9 @@ public class CommunicationServicePlugin extends CordovaPlugin {
     public void initialize(CordovaInterface cordova, CordovaWebView webView) {
         super.initialize(cordova, webView);
         this.startService();
+        if(sqliteManager.needContext()) {
+            sqliteManager.setContext(this.cordova.getActivity());
+        }
     }
 
     /**
@@ -226,14 +229,19 @@ public class CommunicationServicePlugin extends CordovaPlugin {
                 case "reloadUsers":
                     this.reloadUsers(callbackContext);
                     break;
+                case "addMessage":
+                    this.addMessage(options, callbackContext);
+                    break;
                 case "connect":
-                    CommunicationService.instance().startActivity();
-
+                    //CommunicationService.instance().startActivity();
+                    String userId = options.optString("userId");
                     if(sqliteManager.needContext()) {
                         sqliteManager.setContext(this.cordova.getActivity());
                     }
-
-                    CommunicationService.instance().setDbName("test.db");
+                    if(userId == null || userId.trim().equals(""))
+                        userId = "test";
+                    userId += "-v20210209.db";
+                    CommunicationService.instance().setDbName(userId);
                 {
                     PluginResult pluginResult = new PluginResult(PluginResult.Status.OK);
                     callbackContext.sendPluginResult(pluginResult);
@@ -358,6 +366,13 @@ public class CommunicationServicePlugin extends CordovaPlugin {
 
     public void reloadUsers(CallbackContext cbc) {
         this.service.reloadUserList();
+        PluginResult pluginResult = new PluginResult(PluginResult.Status.OK);
+        cbc.sendPluginResult(pluginResult);
+    }
+
+    public void addMessage(JSONObject message, CallbackContext cbc) {
+        if(message != null)
+            this.service.addMessage(message);
         PluginResult pluginResult = new PluginResult(PluginResult.Status.OK);
         cbc.sendPluginResult(pluginResult);
     }

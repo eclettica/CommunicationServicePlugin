@@ -98,15 +98,19 @@ CommunicationServicePlugin.prototype.show = function(message, duration, successC
   cordova.exec(successCallback, errorCallback, 'CommunicationServicePlugin', 'show', [options]);
 }
 
-CommunicationServicePlugin.prototype.connect = function(uri, successCallback, errorCallback) {
+CommunicationServicePlugin.prototype.connect = function(userId, successCallback, errorCallback) {
   var options = {};
-  options.uri = uri;
+  options.userId = userId;
   cordova.exec(successCallback, errorCallback, 'CommunicationServicePlugin', 'connect', [options]);
 }
 
 CommunicationServicePlugin.prototype.startService = function(uri, successCallback, errorCallback) {
   var options = {};
   cordova.exec(successCallback, errorCallback, 'CommunicationServicePlugin', 'startService', [options]);
+}
+
+CommunicationServicePlugin.prototype.addMessage = function(message, successCallback, errorCallback) {
+  cordova.exec(successCallback, errorCallback, 'CommunicationServicePlugin', 'addMessage', [message]);
 }
 
 CommunicationServicePlugin.prototype.send = function(msg, successCallback, errorCallback) {

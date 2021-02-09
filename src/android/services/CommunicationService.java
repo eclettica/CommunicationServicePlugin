@@ -214,11 +214,11 @@ public class CommunicationService extends Service implements WebsocketListnerInt
 
     public void onEvent(String event, String data) {
         LogUtils.printLog(tag, event + " " + data);
-        this.counter++;
+        /*this.counter++;
         if(this.counter == 2) {
             this.reloadUserList();
             this.counter = 0;
-        }
+        }*/
         switch (event) {
             case "onWebsocketConnect":
                 this.manageOnConnection();
@@ -330,10 +330,10 @@ public class CommunicationService extends Service implements WebsocketListnerInt
      * - inviare al backend un messaggio di avvenuta ricezione
      * @param jobj
      */
-    private void addMessage(JSONObject jobj) {
+    public void addMessage(JSONObject jobj) {
         //String insertMessageQuery = CommunicationServiceSqlUtil.getInsertMessageQuery();
         //salvare il messaggio e flaggarlo come ricevuto
-        CommunicationMessageService.saveMessage(jobj, new SQLiteAndroidDatabaseCallback(){
+        CommunicationMessageService.saveMessageAndChat(jobj, new SQLiteAndroidDatabaseCallback(){
             public void error(String error){
                 LogUtils.printLog(tag, "dbquery callback error " + error);
             }
