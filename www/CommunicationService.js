@@ -113,6 +113,14 @@ CommunicationServicePlugin.prototype.addMessage = function(message, successCallb
   cordova.exec(successCallback, errorCallback, 'CommunicationServicePlugin', 'addMessage', [message]);
 }
 
+CommunicationServicePlugin.prototype.getMessages = function(options, successCallback, errorCallback) {
+  cordova.exec(successCallback, errorCallback, 'CommunicationServicePlugin', 'getMessages', [options]);
+}
+
+CommunicationServicePlugin.prototype.getChats = function(options, successCallback, errorCallback) {
+  cordova.exec(successCallback, errorCallback, 'CommunicationServicePlugin', 'getChats', [options]);
+}
+
 CommunicationServicePlugin.prototype.send = function(msg, successCallback, errorCallback) {
   var options = {};
   options.params = msg;

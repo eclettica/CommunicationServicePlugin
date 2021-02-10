@@ -232,6 +232,12 @@ public class CommunicationServicePlugin extends CordovaPlugin {
                 case "addMessage":
                     this.addMessage(options, callbackContext);
                     break;
+                case "getChats":
+                    this.getChats(options, callbackContext);
+                    break;
+                case "getMessages":
+                    this.getMessages(options, callbackContext);
+                    break;
                 case "connect":
                     //CommunicationService.instance().startActivity();
                     String userId = options.optString("userId");
@@ -240,7 +246,7 @@ public class CommunicationServicePlugin extends CordovaPlugin {
                     }
                     if(userId == null || userId.trim().equals(""))
                         userId = "test";
-                    userId += "-v20210209.db";
+                    userId += "-v202102101600.db";
                     CommunicationService.instance().setDbName(userId);
                 {
                     PluginResult pluginResult = new PluginResult(PluginResult.Status.OK);
@@ -372,9 +378,17 @@ public class CommunicationServicePlugin extends CordovaPlugin {
 
     public void addMessage(JSONObject message, CallbackContext cbc) {
         if(message != null)
-            this.service.addMessage(message);
-        PluginResult pluginResult = new PluginResult(PluginResult.Status.OK);
-        cbc.sendPluginResult(pluginResult);
+            this.service.addMessage(message, cbc);
+        /*PluginResult pluginResult = new PluginResult(PluginResult.Status.OK);
+        cbc.sendPluginResult(pluginResult);*/
+    }
+
+    public void getChats(JSONObject obtions, CallbackContext cbc) {
+        this.service.getAllChats(cbc);
+    }
+
+    public void getMessages(JSONObject obtions, CallbackContext cbc) {
+        this.service.getAllMessages(cbc);
     }
 
     public String getCallName(String from) {

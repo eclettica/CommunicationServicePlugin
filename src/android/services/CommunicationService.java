@@ -47,6 +47,11 @@ import io.sqlc.SQLiteManager;
 
 import io.sqlc.SQLiteAndroidDatabaseCallback;
 
+import org.apache.cordova.CallbackContext;
+import org.apache.cordova.PluginResult;
+
+
+
 
 
 //import org.pgsqlite.SQLitePlugin;
@@ -308,7 +313,7 @@ public class CommunicationService extends Service implements WebsocketListnerInt
                 }
                 // FINE GESTIONE  DEL CASO IN CUI LA MAIN ACTIVITY  E' STATA UCCISA O IN BACKHGROUND
 
-                this.addMessage(jobj);
+                this.addMessage(jobj, null);
 
                 break;
 
@@ -330,15 +335,24 @@ public class CommunicationService extends Service implements WebsocketListnerInt
      * - inviare al backend un messaggio di avvenuta ricezione
      * @param jobj
      */
-    public void addMessage(JSONObject jobj) {
+    public void addMessage(JSONObject jobj, CallbackContext cbc) {
         //String insertMessageQuery = CommunicationServiceSqlUtil.getInsertMessageQuery();
         //salvare il messaggio e flaggarlo come ricevuto
+
         CommunicationMessageService.saveMessageAndChat(jobj, new SQLiteAndroidDatabaseCallback(){
             public void error(String error){
                 LogUtils.printLog(tag, "dbquery callback error " + error);
+                if(cbc != null) {
+                    cbc.error(error);
+                }
             }
             public void success(JSONArray arr) {
-                //cercare la conversazione relativa e, qualora non esiste, crearla
+                //deve inviare al backend l'avvenuta ricezione
+                if(cbc != null){
+                    PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, arr);
+                    cbc.sendPluginResult(pluginResult);
+                }
+
             }
         });
 
@@ -468,4 +482,19 @@ public class CommunicationService extends Service implements WebsocketListnerInt
         }
     }
 
+    public static void getAllChats(SQLiteAndroidDatabaseCallback cbc) {
+        CommunicationMessageService.getAllChats(cbc);
+    }
+
+    public static void getAllMessages(SQLiteAndroidDatabaseCallback cbc) {
+        CommunicationMessageService.getAllMessages(cbc);
+    }
+
+    public static void getAllChats(CallbackContext cbc) {
+        CommunicationMessageService.getAllChats(cbc);
+    }
+
+    public static void getAllMessages(CallbackContext cbc) {
+        CommunicationMessageService.getAllMessages(cbc);
+    }
 }
