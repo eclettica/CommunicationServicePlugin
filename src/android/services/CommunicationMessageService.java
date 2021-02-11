@@ -13,6 +13,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
+import java.util.LinkedList;
 
 import it.linup.cordova.plugin.utils.LogUtils;
 
@@ -85,6 +86,7 @@ public class CommunicationMessageService {
             return;
         }
         try {
+            LogUtils.printLog(tag, "FASE2 save message");
             QueryObj qo = insertQuery("Message", map);
             CommunicationServiceSqlUtil.executeSingle(qo.query, qo.params, cbc);
         } catch(Exception ex) {
@@ -123,7 +125,7 @@ public class CommunicationMessageService {
             return;
         }
         try {
-
+            LogUtils.printLog(tag, "FASE1 extract message");
             SqlMessageWrapper s = extractMessage(jobj);
             s.isReceived = true;
             Map<String, Object> m = convertMessageToMap(s);
@@ -142,6 +144,7 @@ public class CommunicationMessageService {
                         return;
                     }*/
                     //cercare la conversazione relativa e, qualora non esiste, crearla
+                    LogUtils.printLog(tag, "FASE3 chat search");
                     try {
                         String id = null;
                         if((Boolean)m.get("isGroup"))
@@ -155,7 +158,7 @@ public class CommunicationMessageService {
                                     cbc.error(error);
                             }
                             public void success(JSONArray arr) {
-
+                                LogUtils.printLog(tag, "FASE4 chat check " + arr);
                                 JSONArray chatArr = null;
                                 try {
                                     chatArr = extractResult(arr);
@@ -167,14 +170,17 @@ public class CommunicationMessageService {
                                     return;
                                 }
                                 if(chatArr == null || chatArr.length() <= 0) {
+                                    LogUtils.printLog(tag, "FASE5 need create chat ");
                                     addChat(m, cbc);
                                 } else {
                                     //qui è necessario verificare se devo aggiornare la chat
                                     JSONObject chatObj = chatArr.optJSONObject(0);
                                     if(chatObj == null) {
+                                        LogUtils.printLog(tag, "FASE5 need create chat ");
                                         addChat(m, cbc);
                                         return;
                                     }
+                                    LogUtils.printLog(tag, "FASE6 update chat ");
                                     Gson gson = new Gson();
                                     SqlChatWrapper chat = gson.fromJson(chatObj.toString(), SqlChatWrapper.class);
                                     if(s.time > chat.timestamp) {
@@ -183,6 +189,7 @@ public class CommunicationMessageService {
                                         chat.lastMessage = s.textMsg;
                                         chat.lastUser = s.fromName;
                                     }
+                                    //TODO fare update della chat
                                     if(cbc != null) {
                                         cbc.success(arr);
                                     }
@@ -205,10 +212,11 @@ public class CommunicationMessageService {
     public static void findChat(String id, boolean isGroup, SQLiteAndroidDatabaseCallback cbc) {
         //TODO gestire le chat di gruppo
         String query = null;
-        if(isGroup)
+        /*if(isGroup)
             query = "SELECT * FROM Chat where groupId=?";
         else
-            query = "SELECT * FROM Chat where fromId=?";
+            query = "SELECT * FROM Chat where fromId=?";*/
+        query = "SELECT * FROM Chat where uuid=?";
         JSONArray arr = new JSONArray();
         arr.put(id);
         CommunicationServiceSqlUtil.executeSingle(query, arr, new SQLiteAndroidDatabaseCallback() {
@@ -220,7 +228,9 @@ public class CommunicationMessageService {
             }
 
             public void success(JSONArray arr) {
-
+                LogUtils.printLog(tag, "search chat dbquery callback " + arr);
+                if(cbc != null)
+                    cbc.success(arr);
                 }
             });
     }
@@ -238,9 +248,9 @@ public class CommunicationMessageService {
         sortMap.put("timestamp", "DESC");
         QueryObj qo = selectQuery("Chat", null,
                 page, limit, sortMap);
-        if(cbc != null) {
+        /*if(cbc != null) {
             CommunicationServiceSqlUtil.executeSingle(qo.query, qo.params, cbc);
-        } else {
+        } else {*/
             CommunicationServiceSqlUtil.executeSingle(qo.query, qo.params, new SQLiteAndroidDatabaseCallback() {
 
                 public void error(String error) {
@@ -260,7 +270,7 @@ public class CommunicationMessageService {
                         dbc.success(arr);
                 }
             });
-        }
+        //}
     }
 
 
@@ -299,6 +309,53 @@ public class CommunicationMessageService {
                         dbc.success(arr);
                 }
             });
+        //}
+    }
+
+    public static void getChatMessages(String uuid, Boolean isGroup, Integer page, Integer limit, CallbackContext cbc, SQLiteAndroidDatabaseCallback dbc) {
+        Map<String, String> sortMap = new HashMap<String, String>();
+        sortMap.put("time", "DESC");
+        QueryGroupObj qg = new QueryGroupObj();
+        qg.condition = "and";
+        qg.fields = new LinkedList<QuerySelectObj>();
+        qg.fields.add(new QuerySelectObj("isGroup", "=", isGroup));
+        if(isGroup) {
+            qg.groups = null;
+            qg.fields.add(new QuerySelectObj("groupId", "=", uuid));
+        } else {
+            qg.groups = new LinkedList<QueryGroupObj>();
+            QueryGroupObj qg1 = new QueryGroupObj();
+            qg1.condition = "or";
+            qg1.fields = new LinkedList<QuerySelectObj>();
+            qg1.fields.add(new QuerySelectObj("fromId", "=", uuid));
+            qg1.fields.add(new QuerySelectObj("toId", "=", uuid));
+            qg.groups.add(qg1);
+        }
+
+        QueryObj qo = selectQuery("Message", qg,
+                page, limit, sortMap);
+        //if(cbc != null) {
+        //    CommunicationServiceSqlUtil.executeSingle(qo.query, qo.params, cbc);
+        //} else {
+        CommunicationServiceSqlUtil.executeSingle(qo.query, qo.params, new SQLiteAndroidDatabaseCallback() {
+
+            public void error(String error) {
+                LogUtils.printLog(tag, "search messages dbquery callback error " + error);
+                if(cbc != null) {
+                    cbc.error(error);
+                } else if(dbc != null)
+                    dbc.error(error);
+            }
+
+            public void success(JSONArray arr) {
+                LogUtils.printLog(tag, "search messages " + arr);
+                if(cbc != null) {
+                    extractResult(arr, cbc);
+
+                } else if(dbc != null)
+                    dbc.success(arr);
+            }
+        });
         //}
     }
 
@@ -382,12 +439,15 @@ public class CommunicationMessageService {
             contentValue.put("uuid", messageMap.get("groupId"));
             contentValue.put("isGroup", true);
             contentValue.put("lastuser", messageMap.get("fromName"));
+            contentValue.put("chatName", messageMap.get("toName"));
         } else {
+            contentValue.put("chatName", messageMap.get("fromName"));
             contentValue.put("uuid", messageMap.get("fromId"));
             contentValue.put("isGroup", false);
+            contentValue.put("lastuser", messageMap.get("fromName"));
         }
         contentValue.put("lastRandom", messageMap.get("randomId"));
-        contentValue.put("lastMessage", messageMap.get("textMessage"));
+        contentValue.put("lastMessage", messageMap.get("textMsg"));
         contentValue.put("timestamp", messageMap.get("time"));
         contentValue.put("numNotRead",numNotRead);
         saveChat(contentValue, cbc);
@@ -395,6 +455,7 @@ public class CommunicationMessageService {
 
     public static void saveChat(Map<String, Object> chatMap, SQLiteAndroidDatabaseCallback cbc) {
         try {
+            LogUtils.printLog(tag, "FASE6 save chat ");
             QueryObj qo = insertQuery("Chat", chatMap);
             CommunicationServiceSqlUtil.executeSingle(qo.query, qo.params, cbc);
         } catch(Exception ex) {
@@ -444,6 +505,14 @@ public class CommunicationMessageService {
         public String fieldKey;
         public String op;
         public Object fieldVal;
+
+        public QuerySelectObj() {}
+
+        public QuerySelectObj(String fieldKey, String op, Object fieldVal) {
+            this.fieldVal = fieldVal;
+            this.fieldKey = fieldKey;
+            this.op = op;
+        }
     }
 
     public static class QueryGroupObj {

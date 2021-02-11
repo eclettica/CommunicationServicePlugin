@@ -246,7 +246,7 @@ public class CommunicationServicePlugin extends CordovaPlugin {
                     }
                     if(userId == null || userId.trim().equals(""))
                         userId = "test";
-                    userId += "-v202102101600.db";
+                    userId += "-v202102111000.db";
                     CommunicationService.instance().setDbName(userId);
                 {
                     PluginResult pluginResult = new PluginResult(PluginResult.Status.OK);
@@ -387,7 +387,20 @@ public class CommunicationServicePlugin extends CordovaPlugin {
         this.service.getAllChats(cbc);
     }
 
-    public void getMessages(JSONObject obtions, CallbackContext cbc) {
+    public void getMessages(JSONObject options, CallbackContext cbc) {
+        String uuid = null;
+        if(options != null) {
+            uuid = options.optString("uuid", null);
+            Boolean isGroup = null;
+            if(options.has("isGroup"))
+                isGroup = options.optBoolean("isGroup");
+            Integer limit = options.optInt("limit", 10);
+            Integer page = options.optInt("page", 0);
+            if(uuid != null && isGroup != null) {
+                this.service.getChatMessages(uuid, isGroup, page, limit, cbc, null);
+                return;
+            }
+        }
         this.service.getAllMessages(cbc);
     }
 

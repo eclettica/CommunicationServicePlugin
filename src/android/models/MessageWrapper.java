@@ -20,6 +20,7 @@ public class MessageWrapper {
     public String attachType = null;
     public boolean isGroup = false;
     public String groupId;
+    public String groupName;
     public String attachmentName;
     public String attachmentId;
 

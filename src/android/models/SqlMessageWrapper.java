@@ -47,7 +47,7 @@ public class SqlMessageWrapper {
         this.textMsg = mw.textMessage;
         this.time = mw.serverDateTimestamp;
         this.toId = mw.toUser != null ? mw.toUser.get("uuid") : null;
-        this.toName = mw.toUser != null ? mw.toUser.get("completeName") : null;
+        this.toName = mw.isGroup ? mw.groupName : mw.toUser != null ? mw.toUser.get("completeName") : null;
     }
 
 }

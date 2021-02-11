@@ -338,7 +338,7 @@ public class CommunicationService extends Service implements WebsocketListnerInt
     public void addMessage(JSONObject jobj, CallbackContext cbc) {
         //String insertMessageQuery = CommunicationServiceSqlUtil.getInsertMessageQuery();
         //salvare il messaggio e flaggarlo come ricevuto
-
+        LogUtils.printLog(tag, "FASE0 saveMessageAndChat ");
         CommunicationMessageService.saveMessageAndChat(jobj, new SQLiteAndroidDatabaseCallback(){
             public void error(String error){
                 LogUtils.printLog(tag, "dbquery callback error " + error);
@@ -348,6 +348,7 @@ public class CommunicationService extends Service implements WebsocketListnerInt
             }
             public void success(JSONArray arr) {
                 //deve inviare al backend l'avvenuta ricezione
+                LogUtils.printLog(tag, "FASE7 message and chat saved ");
                 if(cbc != null){
                     PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, arr);
                     cbc.sendPluginResult(pluginResult);
@@ -480,6 +481,10 @@ public class CommunicationService extends Service implements WebsocketListnerInt
                 return null;
             }
         }
+    }
+
+    public static void getChatMessages(String uuid, Boolean isGroup, Integer page, Integer limit, CallbackContext cbc, SQLiteAndroidDatabaseCallback dbc) {
+        CommunicationMessageService.getChatMessages(uuid, isGroup, page, limit, cbc, dbc);
     }
 
     public static void getAllChats(SQLiteAndroidDatabaseCallback cbc) {
