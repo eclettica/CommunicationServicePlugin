@@ -292,9 +292,9 @@ public class CommunicationServicePlugin extends CordovaPlugin {
                     break;
                 }
                 case "send": {
-                    String params = options.getString("params");
+                    JSONObject params = options.optJSONObject("params");
                     if (params != null)
-                        this.send(params);
+                        this.send(params, callbackContext);
                     break;
                 }
                 case "checkModule":
@@ -389,6 +389,7 @@ public class CommunicationServicePlugin extends CordovaPlugin {
 
     public void getMessages(JSONObject options, CallbackContext cbc) {
         String uuid = null;
+        LogUtils.printLog(tag,"getMessages " + options);
         if(options != null) {
             uuid = options.optString("uuid", null);
             Boolean isGroup = null;
@@ -484,12 +485,11 @@ public class CommunicationServicePlugin extends CordovaPlugin {
     }
 
     //@ReactMethod
-    public void send(String params) {
+    public void send(JSONObject message, CallbackContext cbc) {
         //if(_sock!=null) {
         //_sock.send(params);
-        new SendOperation().execute(params);
-
-
+        //new SendOperation().execute(params);
+        this.service.send(message, cbc);
     }
     //@ReactMethod
     public void checkModule() {

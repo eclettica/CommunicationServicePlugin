@@ -106,7 +106,7 @@ public class CommunicationMessageService {
             result = jobj;
         Gson gson = new Gson();
         MessageWrapper mw = gson.fromJson(result.toString(), MessageWrapper.class);
-        SqlMessageWrapper s = new SqlMessageWrapper(mw);
+        SqlMessageWrapper s = SqlMessageWrapper.buildFromRequest(mw);
         return s;
 
     }
@@ -128,6 +128,95 @@ public class CommunicationMessageService {
             LogUtils.printLog(tag, "FASE1 extract message");
             SqlMessageWrapper s = extractMessage(jobj);
             s.isReceived = true;
+            Map<String, Object> m = convertMessageToMap(s);
+
+            saveMessage(m, new SQLiteAndroidDatabaseCallback() {
+
+                public void error(String error) {
+                    LogUtils.printLog(tag, "dbquery callback error " + error);
+                    if (cbc != null)
+                        cbc.error(error);
+                }
+
+                public void success(JSONArray arr) {
+                    /*if(cbc != null) {
+                        cbc.success(arr);
+                        return;
+                    }*/
+                    //cercare la conversazione relativa e, qualora non esiste, crearla
+                    LogUtils.printLog(tag, "FASE3 chat search");
+                    try {
+                        String id = null;
+                        if((Boolean)m.get("isGroup"))
+                            id = (String)m.get("groupId");
+                        else
+                            id = (String)m.get("fromId");
+                        findChat(id, (Boolean)m.get("isGroup"), new SQLiteAndroidDatabaseCallback() {
+                            public void error(String error) {
+                                LogUtils.printLog(tag, "dbquery callback error " + error);
+                                if (cbc != null)
+                                    cbc.error(error);
+                            }
+                            public void success(JSONArray arr) {
+                                LogUtils.printLog(tag, "FASE4 chat check " + arr);
+                                JSONArray chatArr = null;
+                                try {
+                                    chatArr = extractResult(arr);
+                                } catch(JSONException ex) {
+                                    chatArr = null;
+                                } catch(Exception e) {
+                                    if(cbc != null)
+                                        cbc.error(e.getMessage());
+                                    return;
+                                }
+                                if(chatArr == null || chatArr.length() <= 0) {
+                                    LogUtils.printLog(tag, "FASE5 need create chat ");
+                                    addChat(m, cbc);
+                                } else {
+                                    //qui è necessario verificare se devo aggiornare la chat
+                                    JSONObject chatObj = chatArr.optJSONObject(0);
+                                    if(chatObj == null) {
+                                        LogUtils.printLog(tag, "FASE5 need create chat ");
+                                        addChat(m, cbc);
+                                        return;
+                                    }
+                                    LogUtils.printLog(tag, "FASE6 update chat ");
+                                    Gson gson = new Gson();
+                                    SqlChatWrapper chat = gson.fromJson(chatObj.toString(), SqlChatWrapper.class);
+                                    if(s.time > chat.timestamp) {
+                                        //è necessario aggiornare
+                                        chat.lastRandom = s.randomId;
+                                        chat.lastMessage = s.textMsg;
+                                        chat.lastUser = s.fromName;
+                                    }
+                                    //TODO fare update della chat
+                                    if(cbc != null) {
+                                        cbc.success(arr);
+                                    }
+                                }
+                            }
+                        });
+
+                    } catch (Exception e) {
+                        if (cbc != null)
+                            cbc.error("Exception " + e.getMessage());
+                    }
+                }
+            });
+        } catch(Exception e) {
+            if(cbc != null)
+                cbc.error("Exception " + e.getMessage());
+        }
+    }
+
+    public static void sendMessageAndChat(SqlMessageWrapper s, SQLiteAndroidDatabaseCallback cbc) {
+        if(s == null) {
+            if(cbc != null)
+                cbc.error("Oggetto null");
+            return;
+        }
+        try {
+
             Map<String, Object> m = convertMessageToMap(s);
 
             saveMessage(m, new SQLiteAndroidDatabaseCallback() {
@@ -593,6 +682,54 @@ public class CommunicationMessageService {
         ret.query = x.toString();
         return ret;
     }
+
+    public static QueryObj updateQuery(String table,
+                                       Map<String, Object> fields,
+                                       QueryGroupObj group,
+                                       Integer page,
+                                       Integer limit,
+                                       Map<String, String> sortMap) {
+        JSONArray arr = new JSONArray();
+        StringBuilder x = new StringBuilder("");
+
+        x.append("UPDATE ");
+        x.append(table);
+
+        StringBuilder columns = new StringBuilder("");
+        StringBuilder values = new StringBuilder("");
+        String sep = "";
+        for(String columnKey : fields.keySet()) {
+            columns.append(sep);
+            columns.append(columnKey);
+            values.append(sep);
+            values.append("?");
+            arr.put(fields.get(columnKey));
+            sep = ", ";
+        }
+
+        x.append("(");
+        x.append(columns);
+        x.append(") VALUES(");
+        x.append(values);
+        x.append(")");
+
+        if(group != null) {
+            QueryObj sbo = buildGroupWhere(group);
+            if(sbo.query != null && !sbo.query.trim().equals("")) {
+                x.append(" WHERE ");
+                x.append(sbo.query);
+                if(sbo.params != null)
+                    arr = putAll(arr, sbo.params);
+            }
+        }
+
+        QueryObj ret = new QueryObj();
+        ret.params = arr;
+        ret.query = x.toString();
+        return ret;
+    }
+
+
 
     public static JSONArray putAll(JSONArray container, JSONArray toAdd) {
         if(container == null)

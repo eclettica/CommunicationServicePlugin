@@ -5,9 +5,9 @@ import java.util.HashMap;
 
 public class MessageWrapper {
 
-    public Date clientDate;
+    public String clientDate;
     public Long randomId;
-    public Date serverDate;
+    public String serverDate;
     public Long serverDateTimestamp;
     public String textMessage;
     public String replyTo;

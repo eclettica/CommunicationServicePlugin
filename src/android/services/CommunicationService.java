@@ -25,6 +25,11 @@ import it.linup.cordova.plugin.communication.CommunicationServicePlugin.Event;
 import it.linup.cordova.plugin.communication.services.CommunicationServiceSqlUtil;
 import it.linup.cordova.plugin.communication.services.CommunicationMessageService;
 
+import it.linup.cordova.plugin.communication.models.MessageWrapper;
+import it.linup.cordova.plugin.communication.models.SqlMessageWrapper;
+import it.linup.cordova.plugin.communication.models.SqlChatWrapper;
+
+
 import it.linup.cordova.plugin.utils.LogUtils;
 
 import it.linup.cordova.plugin.utils.FileUtils;
@@ -49,6 +54,7 @@ import io.sqlc.SQLiteAndroidDatabaseCallback;
 
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.PluginResult;
+import com.google.gson.Gson;
 
 
 
@@ -76,6 +82,12 @@ public class CommunicationService extends Service implements WebsocketListnerInt
 
     public static final String USERSLIST = "userslist";
     public static final String UPDATEUSERS = "updateusers";
+    public static final String FORCELOGOUT = "forcelogout";
+    public static final String NEWMESSAGE = "newmessage";
+    public static final String SENDMESSAGE = "sendmessage";
+    public static final String CALL = "call";
+    public static final String READMESSAGE = "readmessage";
+	public static final String RECEIVEMESSAGE = "receivemessage";
 
     private Map<String, UserSessionFacade> users;
 
@@ -295,10 +307,14 @@ public class CommunicationService extends Service implements WebsocketListnerInt
             String event = jobj.getString("event");
 
             switch (event) {
+                case FORCELOGOUT:
+                    FileUtils.writeToFile("websocketserviceuri", "", this.getApplicationContext());
+                    WebsocketService.instance().closeSocket();
+                    break;
                 case UPDATEUSERS:
                     this.updateUsers(jobj.getJSONArray("data"));
                     break;
-                case "newmessage":
+                case NEWMESSAGE:
                 // GESTIONE  DEL CASO IN CUI LA MAIN ACTIVITY  E' STATA UCCISA O IN BACKHGROUND
                 if (_plugin == null || !_plugin.active)
                 {
@@ -348,15 +364,92 @@ public class CommunicationService extends Service implements WebsocketListnerInt
             }
             public void success(JSONArray arr) {
                 //deve inviare al backend l'avvenuta ricezione
-                LogUtils.printLog(tag, "FASE7 message and chat saved ");
-                if(cbc != null){
-                    PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, arr);
-                    cbc.sendPluginResult(pluginResult);
+                try {
+                    SqlMessageWrapper s = CommunicationMessageService.extractMessage(jobj);
+                    ReceiveReadMessagesReq r = new ReceiveReadMessagesReq();
+                    r.groupId = s.groupId;
+                    r.lastRandom = Long.parseLong(s.randomId);
+                    r.userUuid = s.fromId;
+                    sendToWebsocket(RECEIVEMESSAGE, r);
+                    LogUtils.printLog(tag, "FASE7 message and chat saved ");
+                    if (cbc != null) {
+                        PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, arr);
+                        cbc.sendPluginResult(pluginResult);
+                    } else {
+                        if (CommunicationService.instance()._plugin != null) {
+                            Gson gson = new Gson();
+                            CommunicationService.instance()._plugin.generateEvent(NEWMESSAGE, gson.toJson(s));
+                        }
+                    }
+                } catch(JSONException ex) {
+                    if (cbc != null) {
+                        cbc.error(ex.getMessage());
+                    }
                 }
 
             }
         });
+    }
 
+    public static void send(JSONObject message, CallbackContext cbc) {
+        LogUtils.printLog(tag, "FASE0 saveMessageAndChat ");
+
+        Gson gson = new Gson();
+        SendMessageRequest r = gson.fromJson(message.toString(), SendMessageRequest.class);
+        LogUtils.printLog(tag, "FASE1 extract message");
+        SqlMessageWrapper s = SqlMessageWrapper.buildFromRequest(r);
+
+        CommunicationMessageService.sendMessageAndChat(s, new SQLiteAndroidDatabaseCallback(){
+            public void error(String error) {
+                LogUtils.printLog(tag, "dbquery callback error " + error);
+                if(cbc != null) {
+                    cbc.error(error);
+                }
+            }
+            public void success(JSONArray arr) {
+                //deve inviare al backend l'avvenuta ricezione
+
+                sendToWebsocket(SENDMESSAGE, r);
+                LogUtils.printLog(tag, "FASE7 message and chat saved ");
+                if(cbc != null){
+                    PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, arr);
+                    cbc.sendPluginResult(pluginResult);
+                } else {
+                    if(CommunicationService.instance()._plugin != null) {
+                        Gson gson = new Gson();
+                        CommunicationService.instance()._plugin.generateEvent(NEWMESSAGE, gson.toJson(s));
+                    }
+                }
+
+            }
+        });
+    }
+
+    public static class SendMessageRequest {
+        public String fromId;
+        public String fromName;
+        public String uuid;
+        public String toName;
+        public Boolean isGroup;
+        public String message;
+        public Long randomId;
+        public Long timestamp;
+        public String socketSessionFrom;
+        public String replyTo;
+    }
+
+    public static class ReceiveReadMessagesReq {
+        public String userUuid;
+        public Long lastRandom;
+        public String groupId;
+    }
+
+    public static void sendToWebsocket(String event, Object data) {
+        Map<String, Object> map = new HashMap<String, Object>();
+        map.put("event", event);
+        map.put("data", data);
+        Gson gson = new Gson();
+        WebsocketService.instance().asyncSend(gson.toJson(map));
     }
 
 
