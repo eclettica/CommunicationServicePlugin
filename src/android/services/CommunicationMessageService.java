@@ -239,7 +239,7 @@ public class CommunicationMessageService {
                         if((Boolean)m.get("isGroup"))
                             id = (String)m.get("groupId");
                         else
-                            id = (String)m.get("fromId");
+                            id = (String)m.get("toId");
                         findChat(id, (Boolean)m.get("isGroup"), new SQLiteAndroidDatabaseCallback() {
                             public void error(String error) {
                                 LogUtils.printLog(tag, "dbquery callback error " + error);
