@@ -13,6 +13,7 @@ public class MessageWrapper {
     public String replyTo;
     public boolean isRead;
     public boolean isSent;
+    public boolean isDownloaded;
     public HashMap<String, String> fromUser;
     public HashMap<String, String> toUser;
     public String uuid;

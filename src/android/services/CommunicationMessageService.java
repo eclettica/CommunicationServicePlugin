@@ -117,8 +117,19 @@ public class CommunicationMessageService {
         return map;
     }
 
+    public static Map<String, Object> convertChatToMap(SqlChatWrapper s) {
+        ObjectMapper oMapper = new ObjectMapper();
+        Map<String, Object> map = oMapper.convertValue(s, Map.class);
+        return map;
+    }
 
-        public static void saveMessageAndChat(JSONObject jobj, SQLiteAndroidDatabaseCallback cbc) {
+
+    /**
+     * Metodo che viene invocato alla ricezione di un messaggio
+     * @param jobj - oggetto JSON che contiene il messaggio ricevuto
+     * @param cbc - oggetto relativo alla callback
+     */
+    public static void saveMessageAndChat(JSONObject jobj, SQLiteAndroidDatabaseCallback cbc) {
         if(jobj == null) {
             if(cbc != null)
                 cbc.error("Oggetto null");
@@ -128,6 +139,7 @@ public class CommunicationMessageService {
             LogUtils.printLog(tag, "FASE1 extract message");
             SqlMessageWrapper s = extractMessage(jobj);
             s.isReceived = true;
+            s.isDownloaded = true;
             Map<String, Object> m = convertMessageToMap(s);
 
             saveMessage(m, new SQLiteAndroidDatabaseCallback() {
@@ -188,11 +200,14 @@ public class CommunicationMessageService {
                                         chat.lastRandom = s.randomId;
                                         chat.lastMessage = s.textMsg;
                                         chat.lastUser = s.fromName;
+                                        chat.timestamp = s.time;
+                                        updateChat(chat, cbc);
+                                    } else {
+                                        if(cbc != null) {
+                                            cbc.success(arr);
+                                         }
                                     }
-                                    //TODO fare update della chat
-                                    if(cbc != null) {
-                                        cbc.success(arr);
-                                    }
+
                                 }
                             }
                         });
@@ -209,6 +224,11 @@ public class CommunicationMessageService {
         }
     }
 
+    /**
+     * Metodo che viene invocato quando si sta cercando di inviare un messaggio
+     * @param s - wrapper del messaggio
+     * @param cbc - oggetto per la callback
+     */
     public static void sendMessageAndChat(SqlMessageWrapper s, SQLiteAndroidDatabaseCallback cbc) {
         if(s == null) {
             if(cbc != null)
@@ -401,17 +421,20 @@ public class CommunicationMessageService {
         //}
     }
 
-    public static void getChatMessages(String uuid, Boolean isGroup, Integer page, Integer limit, CallbackContext cbc, SQLiteAndroidDatabaseCallback dbc) {
+    public static void getChatMessages(String uuid, Boolean isGroup, Integer page, Integer limit, List<QuerySelectObj> conds, CallbackContext cbc, SQLiteAndroidDatabaseCallback dbc) {
+        LogUtils.printLog(tag, "getChatMessages " + uuid + " " + isGroup);
         Map<String, String> sortMap = new HashMap<String, String>();
         sortMap.put("time", "DESC");
         QueryGroupObj qg = new QueryGroupObj();
         qg.condition = "and";
         qg.fields = new LinkedList<QuerySelectObj>();
         qg.fields.add(new QuerySelectObj("isGroup", "=", isGroup));
+        LogUtils.printLog(tag, "getChatMessages added condition isGroup");
         if(isGroup) {
             qg.groups = null;
             qg.fields.add(new QuerySelectObj("groupId", "=", uuid));
         } else {
+
             qg.groups = new LinkedList<QueryGroupObj>();
             QueryGroupObj qg1 = new QueryGroupObj();
             qg1.condition = "or";
@@ -419,10 +442,16 @@ public class CommunicationMessageService {
             qg1.fields.add(new QuerySelectObj("fromId", "=", uuid));
             qg1.fields.add(new QuerySelectObj("toId", "=", uuid));
             qg.groups.add(qg1);
+            LogUtils.printLog(tag, "getChatMessages added condition uuid");
         }
-
+        if(conds != null) {
+            qg.fields.addAll(conds);
+        }
+        LogUtils.printLog(tag, "getChatMessages generateQuery " + qg.groups.size());
         QueryObj qo = selectQuery("Message", qg,
                 page, limit, sortMap);
+        LogUtils.printLog(tag, "getChatMessages generatedQuery " + qo.query);
+
         //if(cbc != null) {
         //    CommunicationServiceSqlUtil.executeSingle(qo.query, qo.params, cbc);
         //} else {
@@ -519,6 +548,29 @@ public class CommunicationMessageService {
         });
     }*/
 
+    public static void updateChat(SqlChatWrapper chat, SQLiteAndroidDatabaseCallback cbc) {
+        Map<String, Object> chatMap = convertChatToMap(chat);
+        QueryGroupObj qg = new QueryGroupObj();
+        qg.fields = new LinkedList<QuerySelectObj>();
+        QuerySelectObj qso = new QuerySelectObj("id", "=", chat.id);
+        qg.fields.add(qso);
+        qg.groups = null;
+        qg.condition = "and";
+        QueryObj qo = updateQuery("Chat", chatMap, qg);
+        LogUtils.printLog(tag, "updateChat -  " + chat.id + " " + qo.query);
+        if(qo.params != null) {
+            String params = "";
+            for (int i = 0; i < qo.params.length(); i++) {
+                try {
+                    params += " " + qo.params.get(i).toString();
+                } catch (JSONException e) {
+                    continue;
+                }
+            }
+            LogUtils.printLog(tag, "updateChat -  " + params);
+        }
+        CommunicationServiceSqlUtil.executeSingle(qo.query, qo.params, cbc);
+    }
 
     public static void addChat(Map<String, Object> messageMap, SQLiteAndroidDatabaseCallback cbc) {
         Integer numNotRead = 1;
@@ -617,7 +669,7 @@ public class CommunicationMessageService {
         if(group.fields != null && !group.fields.isEmpty()) {
             ret.params = new JSONArray();
             for(QuerySelectObj field : group.fields) {
-                q += sep + field.fieldKey + field.op + "?";
+                q += sep + field.fieldKey + " " + field.op + " ?";
                 ret.params.put(field.fieldVal);
                 sep = " " + group.condition + " ";
             }
@@ -627,14 +679,15 @@ public class CommunicationMessageService {
                 ret.params = new JSONArray();
             for(QueryGroupObj subgroup : group.groups) {
                 QueryObj sbo = buildGroupWhere(subgroup);
-                if(sbo != null) {
-                    q += sep + sbo.query;
+                if(sbo != null && sbo.query != null && !sbo.query.trim().equals("")) {
+                    q += sep + "( " + sbo.query + " )";
                     if(sbo.params != null)
                         ret.params = putAll(ret.params, sbo.params);
                     sep = " " + group.condition + " ";
                 }
             }
         }
+        ret.query = q;
         return ret;
     }
 
@@ -685,10 +738,7 @@ public class CommunicationMessageService {
 
     public static QueryObj updateQuery(String table,
                                        Map<String, Object> fields,
-                                       QueryGroupObj group,
-                                       Integer page,
-                                       Integer limit,
-                                       Map<String, String> sortMap) {
+                                       QueryGroupObj group) {
         JSONArray arr = new JSONArray();
         StringBuilder x = new StringBuilder("");
 
@@ -707,7 +757,7 @@ public class CommunicationMessageService {
             sep = ", ";
         }
 
-        x.append("(");
+        x.append(" (");
         x.append(columns);
         x.append(") VALUES(");
         x.append(values);

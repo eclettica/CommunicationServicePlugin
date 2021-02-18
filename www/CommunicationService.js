@@ -121,6 +121,15 @@ CommunicationServicePlugin.prototype.getChats = function(options, successCallbac
   cordova.exec(successCallback, errorCallback, 'CommunicationServicePlugin', 'getChats', [options]);
 }
 
+CommunicationServicePlugin.prototype.addChat = function(uuid, groupName, groupMessageDescription, isGroup, successCallback, errorCallback) {
+  var options = {};
+  options.uuid = uuid;
+  options.chatName = groupName;
+  options.chatDescription = groupMessageDescription;
+  options.isGroup = isGroup;
+  cordova.exec(successCallback, errorCallback, 'CommunicationServicePlugin', 'addChat', [options]);
+}
+
 CommunicationServicePlugin.prototype.send = function(msg, successCallback, errorCallback) {
   var options = {};
   options.params = msg;
@@ -135,6 +144,11 @@ CommunicationServicePlugin.prototype.checkBackground = function(successCallback,
   let bool = cordova.plugins.backgroundMode.isActive();
   if(successCallback)
     successCallback(bool);
+}
+
+CommunicationServicePlugin.prototype.vibrate = function(successCallback, errorCallback) {
+  var options = {};
+  cordova.exec(successCallback, errorCallback, 'CommunicationServicePlugin', 'vibrate', [options]);
 }
 
 

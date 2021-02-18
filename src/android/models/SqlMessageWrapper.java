@@ -25,6 +25,7 @@ public class SqlMessageWrapper {
     public boolean isRead = false;
     public boolean isReceivedComunicated = false;
     public boolean isReadComunicated = false;
+    public boolean isDownloaded = false;
     public String replyTo;
     public Long time;
     public Long clientTime;
@@ -44,12 +45,15 @@ public class SqlMessageWrapper {
         ret.groupId = mw.groupId;
         ret.isAttach = mw.isAttach;
         ret.isGroup = mw.isGroup;
+        if(ret.isGroup == false)
+            ret.groupId = ret.fromId;
         ret.randomId = ""+mw.randomId;
         ret.replyTo = mw.replyTo;
         ret.textMsg = mw.textMessage;
         ret.time = mw.serverDateTimestamp;
         ret.toId = mw.toUser != null ? mw.toUser.get("uuid") : null;
         ret.toName = mw.isGroup ? mw.groupName : mw.toUser != null ? mw.toUser.get("completeName") : null;
+        ret.isDownloaded = mw.isDownloaded;
         return ret;
     }
 
@@ -62,6 +66,7 @@ public class SqlMessageWrapper {
             ret.groupId = mw.uuid;
         } else {
             ret.toId = mw.uuid;
+            ret.groupId = mw.uuid;
         }
         ret.toName = mw.toName;
         ret.textMsg = mw.message;
@@ -72,6 +77,7 @@ public class SqlMessageWrapper {
         ret.attachmentName = null;
         ret.attachmentType = null;
         ret.isAttach = false;
+        ret.isDownloaded = true;
         return ret;
     }
 

@@ -13,6 +13,7 @@ import android.os.Handler;
 import android.widget.Toast;
 import it.linup.cordova.plugin.communication.services.CommunicationService;
 import it.linup.cordova.plugin.communication.services.CommunicationService.ForegroundBinder;
+import it.linup.cordova.plugin.communication.services.CommunicationMessageService.QuerySelectObj;
 import it.linup.cordova.plugin.services.WebsocketListnerInterface;
 import it.linup.cordova.plugin.utils.FileUtils;
 import it.linup.cordova.plugin.utils.LogUtils;
@@ -29,6 +30,12 @@ import static android.content.Context.BIND_AUTO_CREATE;
 
 import io.sqlc.SQLiteAndroidDatabaseCallback;
 import io.sqlc.SQLiteManager;
+
+import com.google.gson.Gson;
+
+
+import java.util.List;
+import java.util.LinkedList;
 
 
 //import com.facebook.react.modules.core.DeviceEventManagerModule;
@@ -235,6 +242,11 @@ public class CommunicationServicePlugin extends CordovaPlugin {
                 case "getChats":
                     this.getChats(options, callbackContext);
                     break;
+                case "addChat":
+                    this.addChat(options, callbackContext);
+                case "vibrate":
+                    this.vibrate(callbackContext);
+                    break;
                 case "getMessages":
                     this.getMessages(options, callbackContext);
                     break;
@@ -246,37 +258,13 @@ public class CommunicationServicePlugin extends CordovaPlugin {
                     }
                     if(userId == null || userId.trim().equals(""))
                         userId = "test";
-                    userId += "-v202102111000.db";
+                    userId += "-v202102181700.db";
                     CommunicationService.instance().setDbName(userId);
                 {
                     PluginResult pluginResult = new PluginResult(PluginResult.Status.OK);
                     callbackContext.sendPluginResult(pluginResult);
                 }
-                    /*options = new JSONObject();
-                    options.put("name", "test.db");
-                    String dbname = options.getString("name");
-                    LogUtils.printLog(tag, "starting database...  " + dbname);
-                    sqliteManager.startDatabase(dbname, options, null);
-                    LogUtils.printLog(tag, "execute query  " + dbname);
-                    sqliteManager.executeSingle(dbname, "SELECT count(*) AS mycount FROM DemoTable", null, new SQLiteAndroidDatabaseCallback() {
-                        public void error(String error){
-                            LogUtils.printLog(tag, "dbquery callback error " + error);
-                        }
-                        public void success(JSONArray arr) {
-                            for (int i = 0 ; i < arr.length(); i++) {
-                                try {
-                                    JSONObject obj = arr.getJSONObject(i);
-                                    LogUtils.printLog(tag, "res  " + i + ": " + obj.toString());
-                                } catch(Exception e) {
-                                    LogUtils.printLog(tag, "cannot get response for  " + i );
-                                }
-                            }
-                        }
-                    });*/
 
-                    /*Context context = cordova.getActivity().getApplicationContext();
-                    Intent intent = new Intent(context, IncomingCallActivity.class);
-                    this.cordova.getActivity().startActivity(intent);*/
                     if(true)
                         break;
                     String uri = options.getString("uri");
@@ -383,8 +371,19 @@ public class CommunicationServicePlugin extends CordovaPlugin {
         cbc.sendPluginResult(pluginResult);*/
     }
 
+    public void addChat(JSONObject chat, CallbackContext cbc) {
+        if(chat != null)
+            this.service.addChat(chat, cbc);
+    }
+
     public void getChats(JSONObject obtions, CallbackContext cbc) {
         this.service.getAllChats(cbc);
+    }
+
+    public void vibrate(CallbackContext cbc) {
+        this.service.vibrate();
+        PluginResult pluginResult = new PluginResult(PluginResult.Status.OK);
+        cbc.sendPluginResult(pluginResult);
     }
 
     public void getMessages(JSONObject options, CallbackContext cbc) {
@@ -397,8 +396,23 @@ public class CommunicationServicePlugin extends CordovaPlugin {
                 isGroup = options.optBoolean("isGroup");
             Integer limit = options.optInt("limit", 10);
             Integer page = options.optInt("page", 0);
+            LogUtils.printLog(tag,"getMessages " + uuid + " " + isGroup);
+            JSONArray conditions = options.optJSONArray("conditions");
+            List<QuerySelectObj> conds = null;
+            if(conditions != null) {
+                Gson gson = new Gson();
+                conds = new LinkedList<QuerySelectObj>();
+                for(int i=0; i<conditions.length(); i++) {
+                    try {
+                        QuerySelectObj qso = gson.fromJson(conditions.get(i).toString(), QuerySelectObj.class);
+                        conds.add(qso);
+                    } catch(JSONException ex) {
+                        continue;
+                    }
+                }
+            }
             if(uuid != null && isGroup != null) {
-                this.service.getChatMessages(uuid, isGroup, page, limit, cbc, null);
+                this.service.getChatMessages(uuid, isGroup, page, limit, conds, cbc, null);
                 return;
             }
         }

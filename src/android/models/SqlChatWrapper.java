@@ -10,6 +10,7 @@ public class SqlChatWrapper {
     public Long id;
     public String uuid;
     public String chatName;
+    public String chatDescription;
     public String lastRandom;
     public String lastMessage;
     public String lastUser;

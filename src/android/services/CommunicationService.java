@@ -56,9 +56,7 @@ import org.apache.cordova.CallbackContext;
 import org.apache.cordova.PluginResult;
 import com.google.gson.Gson;
 
-
-
-
+import it.linup.cordova.plugin.communication.services.CommunicationMessageService.QuerySelectObj;
 
 //import org.pgsqlite.SQLitePlugin;
 //import org.pgsqlite.SQLitePluginPackage;
@@ -85,6 +83,7 @@ public class CommunicationService extends Service implements WebsocketListnerInt
     public static final String FORCELOGOUT = "forcelogout";
     public static final String NEWMESSAGE = "newmessage";
     public static final String SENDMESSAGE = "sendmessage";
+    public static final String DOWNLOADMESSAGE = "downloadmessage";
     public static final String CALL = "call";
     public static final String READMESSAGE = "readmessage";
 	public static final String RECEIVEMESSAGE = "receivemessage";
@@ -231,11 +230,6 @@ public class CommunicationService extends Service implements WebsocketListnerInt
 
     public void onEvent(String event, String data) {
         LogUtils.printLog(tag, event + " " + data);
-        /*this.counter++;
-        if(this.counter == 2) {
-            this.reloadUserList();
-            this.counter = 0;
-        }*/
         switch (event) {
             case "onWebsocketConnect":
                 this.manageOnConnection();
@@ -299,6 +293,7 @@ public class CommunicationService extends Service implements WebsocketListnerInt
                     jobj = new JSONObject();
                     jobj.put("message", message);
                     jobj.put("event", message);
+                    WebsocketService.instance().closeSocket();
                 } else {
                     this.currentSessionId = message;
                     return;
@@ -340,6 +335,22 @@ public class CommunicationService extends Service implements WebsocketListnerInt
 
     }
 
+    public static void vibrate() {
+        vibrate(1000);
+    }
+
+    public static void vibrate(Integer duration) {
+        if(duration == null)
+            duration = 1000;
+        try {
+            Vibrator v = (Vibrator) mContext.getSystemService(Context.VIBRATOR_SERVICE);
+            v.vibrate(duration);
+            LogUtils.printLog(tag," MESSAGE RECEIVED");
+        } catch (Exception e) {
+            LogUtils.printLog(tag,"ACTIVITY ERROR ON  MESSAGE RECEIVED VIBRATION");
+        }
+    }
+
     /**
      * In questo metodo devono essere gestiti tutti i passaggi legati al flusso di ricezione di un messaggio
      * - salvare il messaggio e flaggarlo come ricevuto
@@ -348,13 +359,15 @@ public class CommunicationService extends Service implements WebsocketListnerInt
      * e il testo dell'ultimo messaggio
      * - generare gli eventi per comunicare alla parte JS dell'arrivo di un messaggio e
      * il nuovo valore del contatore;
-     * - inviare al backend un messaggio di avvenuta ricezione
+     * - inviare al backend
+     * un messaggio di avvenuta ricezione
      * @param jobj
      */
     public void addMessage(JSONObject jobj, CallbackContext cbc) {
         //String insertMessageQuery = CommunicationServiceSqlUtil.getInsertMessageQuery();
         //salvare il messaggio e flaggarlo come ricevuto
         LogUtils.printLog(tag, "FASE0 saveMessageAndChat ");
+        CommunicationServicePlugin pg = this._plugin;
         CommunicationMessageService.saveMessageAndChat(jobj, new SQLiteAndroidDatabaseCallback(){
             public void error(String error){
                 LogUtils.printLog(tag, "dbquery callback error " + error);
@@ -367,18 +380,21 @@ public class CommunicationService extends Service implements WebsocketListnerInt
                 try {
                     SqlMessageWrapper s = CommunicationMessageService.extractMessage(jobj);
                     ReceiveReadMessagesReq r = new ReceiveReadMessagesReq();
-                    r.groupId = s.groupId;
+                    if(s.isGroup)
+                        r.groupId = s.groupId;
                     r.lastRandom = Long.parseLong(s.randomId);
                     r.userUuid = s.fromId;
-                    sendToWebsocket(RECEIVEMESSAGE, r);
+                    sendToWebsocket(DOWNLOADMESSAGE, r);
                     LogUtils.printLog(tag, "FASE7 message and chat saved ");
                     if (cbc != null) {
+                        LogUtils.printLog(tag, "FASE8 call callback ");
                         PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, arr);
                         cbc.sendPluginResult(pluginResult);
                     } else {
-                        if (CommunicationService.instance()._plugin != null) {
+                        LogUtils.printLog(tag, "FASE8 generate event... " + (pg != null ? "not null" : "null"));
+                        if (pg != null) {
                             Gson gson = new Gson();
-                            CommunicationService.instance()._plugin.generateEvent(NEWMESSAGE, gson.toJson(s));
+                            pg.generateEvent(NEWMESSAGE, gson.toJson(s));
                         }
                     }
                 } catch(JSONException ex) {
@@ -391,8 +407,35 @@ public class CommunicationService extends Service implements WebsocketListnerInt
         });
     }
 
+    public void addChat(JSONObject jobj, CallbackContext cbc) {
+        Gson gson = new Gson();
+        SqlChatWrapper r = gson.fromJson(jobj.toString(), SqlChatWrapper.class);
+        r.numNotRead = 0;
+        r.lastRandom = "";
+        r.lastMessage = "-";
+        r.lastUser = "-";
+        r.timestamp = new Date().getTime();
+        Map<String, Object> map = CommunicationMessageService.convertChatToMap(r);
+        CommunicationMessageService.saveChat(map, new  SQLiteAndroidDatabaseCallback() {
+            public void error(String error) {
+                LogUtils.printLog(tag, "dbquery callback error " + error);
+                if (cbc != null) {
+                    cbc.error(error);
+                }
+            }
+
+            public void success(JSONArray arr) {
+                LogUtils.printLog(tag, "addChat ok ");
+                if(cbc != null) {
+                    PluginResult pluginResult = new PluginResult(PluginResult.Status.OK);
+                    cbc.sendPluginResult(pluginResult);
+                }
+            }
+        });
+    }
+
     public static void send(JSONObject message, CallbackContext cbc) {
-        LogUtils.printLog(tag, "FASE0 saveMessageAndChat ");
+        LogUtils.printLog(tag, "FASE0 sendMessageAndChat ");
 
         Gson gson = new Gson();
         SendMessageRequest r = gson.fromJson(message.toString(), SendMessageRequest.class);
@@ -576,8 +619,8 @@ public class CommunicationService extends Service implements WebsocketListnerInt
         }
     }
 
-    public static void getChatMessages(String uuid, Boolean isGroup, Integer page, Integer limit, CallbackContext cbc, SQLiteAndroidDatabaseCallback dbc) {
-        CommunicationMessageService.getChatMessages(uuid, isGroup, page, limit, cbc, dbc);
+    public static void getChatMessages(String uuid, Boolean isGroup, Integer page, Integer limit, List<QuerySelectObj> conds, CallbackContext cbc, SQLiteAndroidDatabaseCallback dbc) {
+        CommunicationMessageService.getChatMessages(uuid, isGroup, page, limit, conds, cbc, dbc);
     }
 
     public static void getAllChats(SQLiteAndroidDatabaseCallback cbc) {
