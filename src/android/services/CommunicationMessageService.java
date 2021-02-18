@@ -297,11 +297,14 @@ public class CommunicationMessageService {
                                         chat.lastRandom = s.randomId;
                                         chat.lastMessage = s.textMsg;
                                         chat.lastUser = s.fromName;
+                                        updateChat(chat, cbc);
+                                    } else {
+                                        //TODO fare update della chat
+                                        if(cbc != null) {
+                                            cbc.success(arr);
+                                        }
                                     }
-                                    //TODO fare update della chat
-                                    if(cbc != null) {
-                                        cbc.success(arr);
-                                    }
+
                                 }
                             }
                         });
@@ -447,7 +450,8 @@ public class CommunicationMessageService {
         if(conds != null) {
             qg.fields.addAll(conds);
         }
-        LogUtils.printLog(tag, "getChatMessages generateQuery " + qg.groups.size());
+        if(qg.groups != null)
+            LogUtils.printLog(tag, "getChatMessages generateQuery " + qg.groups.size());
         QueryObj qo = selectQuery("Message", qg,
                 page, limit, sortMap);
         LogUtils.printLog(tag, "getChatMessages generatedQuery " + qo.query);
@@ -741,11 +745,22 @@ public class CommunicationMessageService {
                                        QueryGroupObj group) {
         JSONArray arr = new JSONArray();
         StringBuilder x = new StringBuilder("");
-
+        LogUtils.printLog(tag, " updateQuery ");
         x.append("UPDATE ");
         x.append(table);
+        x.append(" SET ");
 
-        StringBuilder columns = new StringBuilder("");
+        String sep = "";
+        LogUtils.printLog(tag, " addFields ");
+        for(String columnKey : fields.keySet()) {
+            x.append(sep);
+            x.append(columnKey);
+            x.append(" = ?");
+            arr.put(fields.get(columnKey));
+            sep = ", ";
+        }
+
+        /*StringBuilder columns = new StringBuilder("");
         StringBuilder values = new StringBuilder("");
         String sep = "";
         for(String columnKey : fields.keySet()) {
@@ -761,8 +776,8 @@ public class CommunicationMessageService {
         x.append(columns);
         x.append(") VALUES(");
         x.append(values);
-        x.append(")");
-
+        x.append(")");*/
+        LogUtils.printLog(tag, " addCondition ");
         if(group != null) {
             QueryObj sbo = buildGroupWhere(group);
             if(sbo.query != null && !sbo.query.trim().equals("")) {
@@ -776,6 +791,7 @@ public class CommunicationMessageService {
         QueryObj ret = new QueryObj();
         ret.params = arr;
         ret.query = x.toString();
+        LogUtils.printLog(tag, " query: " + ret.query);
         return ret;
     }
 
