@@ -321,7 +321,7 @@ public class CommunicationMessageService {
         }
     }
 
-    public static void findChat(String id, boolean isGroup, SQLiteAndroidDatabaseCallback cbc) {
+    public static void findChat(String groupId, boolean isGroup, SQLiteAndroidDatabaseCallback cbc) {
         //TODO gestire le chat di gruppo
         String query = null;
         /*if(isGroup)
@@ -330,7 +330,7 @@ public class CommunicationMessageService {
             query = "SELECT * FROM Chat where fromId=?";*/
         query = "SELECT * FROM Chat where uuid=?";
         JSONArray arr = new JSONArray();
-        arr.put(id);
+        arr.put(groupId);
         CommunicationServiceSqlUtil.executeSingle(query, arr, new SQLiteAndroidDatabaseCallback() {
 
             public void error(String error) {
@@ -574,6 +574,9 @@ public class CommunicationMessageService {
             LogUtils.printLog(tag, "updateChat -  " + params);
         }
         CommunicationServiceSqlUtil.executeSingle(qo.query, qo.params, cbc);
+        LogUtils.printLog(tag, "updateChat send to plugin");
+        Gson gson = new Gson();
+        CommunicationService.generateEvent(CommunicationService.NEWCHAT, gson.toJson(chatMap));
     }
 
     public static void addChat(Map<String, Object> messageMap, SQLiteAndroidDatabaseCallback cbc) {
@@ -603,6 +606,9 @@ public class CommunicationMessageService {
             LogUtils.printLog(tag, "FASE6 save chat ");
             QueryObj qo = insertQuery("Chat", chatMap);
             CommunicationServiceSqlUtil.executeSingle(qo.query, qo.params, cbc);
+            Gson gson = new Gson();
+            CommunicationService.generateEvent(CommunicationService.NEWCHAT, gson.toJson(chatMap));
+
         } catch(Exception ex) {
             if(cbc != null)
                 cbc.error(ex.getMessage());

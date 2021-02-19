@@ -76,7 +76,7 @@ public class CommunicationService extends Service implements WebsocketListnerInt
 
     private String currentSessionId;
 
-    private CommunicationServicePlugin _plugin = null;
+    public static CommunicationServicePlugin _plugin = null;
 
     public static final String USERSLIST = "userslist";
     public static final String UPDATEUSERS = "updateusers";
@@ -87,6 +87,10 @@ public class CommunicationService extends Service implements WebsocketListnerInt
     public static final String CALL = "call";
     public static final String READMESSAGE = "readmessage";
 	public static final String RECEIVEMESSAGE = "receivemessage";
+    public static final String LEAVEGROUP = "leavegroup";
+    public static final String ENTERGROUP = "entergroup";
+    public static final String NEWCHAT = "newchat";
+
 
     private Map<String, UserSessionFacade> users;
 
@@ -125,8 +129,13 @@ public class CommunicationService extends Service implements WebsocketListnerInt
 
     public void setPlugin(CommunicationServicePlugin plugin) {
 
-        this._plugin = plugin;
+        _plugin = plugin;
     }
+
+    public CommunicationServicePlugin getPlugin() {
+        return _plugin;
+    }
+
 
 
     private static enum CommunicationServiceSingleton {
@@ -244,8 +253,8 @@ public class CommunicationService extends Service implements WebsocketListnerInt
             default:
                 LogUtils.printLog(tag, event + " event not found");
         }
-        if(this._plugin != null) {
-            this._plugin.fireEvent(CommunicationServicePlugin.Event.MESSAGE, data);
+        if(_plugin != null) {
+            _plugin.fireEvent(CommunicationServicePlugin.Event.MESSAGE, data);
         }
     }
 
@@ -310,29 +319,102 @@ public class CommunicationService extends Service implements WebsocketListnerInt
                     this.updateUsers(jobj.getJSONArray("data"));
                     break;
                 case NEWMESSAGE:
-                // GESTIONE  DEL CASO IN CUI LA MAIN ACTIVITY  E' STATA UCCISA O IN BACKHGROUND
-                if (_plugin == null || !_plugin.active)
-                {
-                    try {
-                        Vibrator v = (Vibrator) mContext.getSystemService(Context.VIBRATOR_SERVICE);
-                        v.vibrate(1000);
-                        LogUtils.printLog(tag," MESSAGE RECEIVED");
-                    } catch (Exception e) {
-                        LogUtils.printLog(tag,"ACTIVITY ERROR ON  MESSAGE RECEIVED VIBRATION");
+                    // GESTIONE  DEL CASO IN CUI LA MAIN ACTIVITY  E' STATA UCCISA O IN BACKHGROUND
+                    if (_plugin == null || !_plugin.active)
+                    {
+                        try {
+                            Vibrator v = (Vibrator) mContext.getSystemService(Context.VIBRATOR_SERVICE);
+                            v.vibrate(1000);
+                            LogUtils.printLog(tag," MESSAGE RECEIVED");
+                        } catch (Exception e) {
+                            LogUtils.printLog(tag,"ACTIVITY ERROR ON  MESSAGE RECEIVED VIBRATION");
+                        }
+
                     }
+                    // FINE GESTIONE  DEL CASO IN CUI LA MAIN ACTIVITY  E' STATA UCCISA O IN BACKHGROUND
 
-                }
-                // FINE GESTIONE  DEL CASO IN CUI LA MAIN ACTIVITY  E' STATA UCCISA O IN BACKHGROUND
+                    this.addMessage(jobj, null);
 
-                this.addMessage(jobj, null);
-
-                break;
-
+                    break;
+                case ENTERGROUP:
+                    this.enterGroup(jobj, null);
+                    break;
+                default:
+                    LogUtils.printLog(tag, "Event not found " + event + " " + jobj.toString());
             }
         } catch(JSONException jex) {
-
+            LogUtils.printLog(tag, "exception " + jex.getMessage());
         }
 
+    }
+
+    public static void enterGroup(JSONObject jobj, CallbackContext cbc) {
+        LogUtils.printLog(tag, "enterGroup " + jobj.toString());
+        Gson gson = new Gson();
+        JSONObject data = jobj.optJSONObject("data");
+        JSONObject result = null;
+        if(data != null)
+            result = data.optJSONObject("result");
+        else
+            result = jobj;
+        if(result == null)
+            result = jobj;
+        //SqlChatWrapper r = gson.fromJson(jobj.toString(), SqlChatWrapper.class);
+        SqlChatWrapper r = new SqlChatWrapper();
+        try {
+            r.uuid = result.getString("id");
+            r.chatName = result.getString("groupName");
+            r.chatDescription = result.getString("groupMessageDescription");
+            r.lastRandom = "";
+            r.lastMessage = "";
+            r.lastUser = "-";
+            r.isGroup = true;
+            r.timestamp = new Date().getTime();
+            r.numNotRead = 0;
+        } catch(JSONException ex) {
+            LogUtils.printLog(tag, "exception!!!!! " + ex.getMessage());
+            if (cbc != null)
+                cbc.error(ex.getMessage());
+        }
+        CommunicationServicePlugin pg = _plugin;
+        CommunicationMessageService.findChat(r.uuid, true, new SQLiteAndroidDatabaseCallback() {
+            public void error(String error) {
+                LogUtils.printLog(tag, "dbquery callback error " + error);
+                if (cbc != null)
+                    cbc.error(error);
+            }
+            public void success(JSONArray arr) {
+                JSONArray chatArr = null;
+                try {
+                    chatArr = CommunicationMessageService.extractResult(arr);
+                } catch(JSONException ex) {
+                    chatArr = null;
+                } catch(Exception e) {
+                    if(cbc != null)
+                        cbc.error(e.getMessage());
+                    return;
+                }
+                if(chatArr == null || chatArr.length() <= 0) {
+                    CommunicationService.instance().addChat(r, cbc, new SQLiteAndroidDatabaseCallback() {
+                        public void error(String error) {
+                            LogUtils.printLog(tag, "dbquery callback error " + error);
+
+                        }
+                        public void success(JSONArray arr) {
+                            if (pg != null) {
+                                Gson gson = new Gson();
+                                pg.generateEvent(NEWCHAT, gson.toJson(r));
+                            }
+                        }
+                    });
+                } else {
+                    if (pg != null) {
+                        Gson gson = new Gson();
+                        pg.generateEvent(NEWCHAT, gson.toJson(r));
+                    }
+                }
+            }
+        });
     }
 
     public static void vibrate() {
@@ -367,7 +449,7 @@ public class CommunicationService extends Service implements WebsocketListnerInt
         //String insertMessageQuery = CommunicationServiceSqlUtil.getInsertMessageQuery();
         //salvare il messaggio e flaggarlo come ricevuto
         LogUtils.printLog(tag, "FASE0 saveMessageAndChat ");
-        CommunicationServicePlugin pg = this._plugin;
+        CommunicationServicePlugin pg = _plugin;
         CommunicationMessageService.saveMessageAndChat(jobj, new SQLiteAndroidDatabaseCallback(){
             public void error(String error){
                 LogUtils.printLog(tag, "dbquery callback error " + error);
@@ -410,6 +492,10 @@ public class CommunicationService extends Service implements WebsocketListnerInt
     public void addChat(JSONObject jobj, CallbackContext cbc) {
         Gson gson = new Gson();
         SqlChatWrapper r = gson.fromJson(jobj.toString(), SqlChatWrapper.class);
+        addChat(r, cbc, null);
+    }
+
+    public void addChat(SqlChatWrapper r, CallbackContext cbc, SQLiteAndroidDatabaseCallback cbcs) {
         r.numNotRead = 0;
         r.lastRandom = "";
         r.lastMessage = "-";
@@ -422,6 +508,9 @@ public class CommunicationService extends Service implements WebsocketListnerInt
                 if (cbc != null) {
                     cbc.error(error);
                 }
+                if(cbcs != null) {
+                    cbcs.error(error);
+                }
             }
 
             public void success(JSONArray arr) {
@@ -429,6 +518,9 @@ public class CommunicationService extends Service implements WebsocketListnerInt
                 if(cbc != null) {
                     PluginResult pluginResult = new PluginResult(PluginResult.Status.OK);
                     cbc.sendPluginResult(pluginResult);
+                }
+                if(cbcs != null) {
+                    cbcs.success(arr);
                 }
             }
         });
@@ -458,10 +550,10 @@ public class CommunicationService extends Service implements WebsocketListnerInt
                     PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, arr);
                     cbc.sendPluginResult(pluginResult);
                 } else {
-                    if(CommunicationService.instance()._plugin != null) {
+                    /*if(CommunicationService.instance()._plugin != null) {
                         Gson gson = new Gson();
                         CommunicationService.instance()._plugin.generateEvent(NEWMESSAGE, gson.toJson(s));
-                    }
+                    }*/
                 }
 
             }
@@ -539,8 +631,8 @@ public class CommunicationService extends Service implements WebsocketListnerInt
     }
 
     public void comunicateUsers() {
-        if(this._plugin != null) {
-            this._plugin.generateEvent(UPDATEUSERS, getUsersJSONObject());
+        if(_plugin != null) {
+            _plugin.generateEvent(UPDATEUSERS, getUsersJSONObject());
         }
     }
 
@@ -637,5 +729,13 @@ public class CommunicationService extends Service implements WebsocketListnerInt
 
     public static void getAllMessages(CallbackContext cbc) {
         CommunicationMessageService.getAllMessages(cbc);
+    }
+
+    public static void generateEvent(String event, String obj) {
+        LogUtils.printLog(tag, "generateEvent send to plugin");
+        if (_plugin != null) {
+            LogUtils.printLog(tag, "generateEvent send to plugin generate event");
+            _plugin.generateEvent(event, obj);
+        }
     }
 }
