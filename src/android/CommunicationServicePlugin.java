@@ -285,6 +285,25 @@ public class CommunicationServicePlugin extends CordovaPlugin {
                         this.send(params, callbackContext);
                     break;
                 }
+                case "sendSocket": {
+                    String params = options.optString("params");
+                    if (params != null)
+                        this.sendSocket(params, callbackContext);
+                    break;
+                }
+                case "checkSocket": {
+                    this.checkSocket(callbackContext);
+                    break;
+                }
+                case "read": {
+                    Long id = options.optLong("id");
+                    String fromId = options.optString("fromId");
+                    String randomId = options.optString("randomId");
+                    String groupId = options.optString("groupId");
+                    if (id != null)
+                        this.read(id, fromId, randomId, groupId, callbackContext);
+                    break;
+                }
                 case "checkModule":
                     this.checkModule();
                     break;
@@ -500,10 +519,19 @@ public class CommunicationServicePlugin extends CordovaPlugin {
 
     //@ReactMethod
     public void send(JSONObject message, CallbackContext cbc) {
-        //if(_sock!=null) {
-        //_sock.send(params);
-        //new SendOperation().execute(params);
         this.service.send(message, cbc);
+    }
+
+    public void sendSocket(String message, CallbackContext cbc) {
+        this.service.sendSocket(message, cbc);
+    }
+
+    public void checkSocket(CallbackContext cbc) {
+        this.service.checkSocket(cbc);
+    }
+
+    public void read(Long id, String fromId, String randomId, String groupId, CallbackContext cbc) {
+        this.service.read(id, fromId, randomId, groupId, cbc);
     }
     //@ReactMethod
     public void checkModule() {

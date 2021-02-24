@@ -260,53 +260,55 @@ public class CommunicationMessageService {
                             id = (String)m.get("groupId");
                         else
                             id = (String)m.get("toId");
-                        findChat(id, (Boolean)m.get("isGroup"), new SQLiteAndroidDatabaseCallback() {
-                            public void error(String error) {
-                                LogUtils.printLog(tag, "dbquery callback error " + error);
-                                if (cbc != null)
-                                    cbc.error(error);
-                            }
-                            public void success(JSONArray arr) {
-                                LogUtils.printLog(tag, "FASE4 chat check " + arr);
-                                JSONArray chatArr = null;
-                                try {
-                                    chatArr = extractResult(arr);
-                                } catch(JSONException ex) {
-                                    chatArr = null;
-                                } catch(Exception e) {
-                                    if(cbc != null)
-                                        cbc.error(e.getMessage());
-                                    return;
+                            findChat(id, (Boolean)m.get("isGroup"), new SQLiteAndroidDatabaseCallback() {
+                                public void error(String error) {
+                                    LogUtils.printLog(tag, "dbquery callback error " + error);
+                                    if (cbc != null)
+                                        cbc.error(error);
                                 }
-                                if(chatArr == null || chatArr.length() <= 0) {
-                                    LogUtils.printLog(tag, "FASE5 need create chat ");
-                                    addChat(m, cbc);
-                                } else {
-                                    //qui è necessario verificare se devo aggiornare la chat
-                                    JSONObject chatObj = chatArr.optJSONObject(0);
-                                    if(chatObj == null) {
-                                        LogUtils.printLog(tag, "FASE5 need create chat ");
-                                        addChat(m, cbc);
+                                public void success(JSONArray arr) {
+                                    LogUtils.printLog(tag, "FASE4 chat check " + arr);
+                                    JSONArray chatArr = null;
+                                    try {
+                                        chatArr = extractResult(arr);
+                                    } catch(JSONException ex) {
+                                        chatArr = null;
+                                    } catch(Exception e) {
+                                        if(cbc != null)
+                                            cbc.error(e.getMessage());
                                         return;
                                     }
-                                    LogUtils.printLog(tag, "FASE6 update chat ");
-                                    Gson gson = new Gson();
-                                    SqlChatWrapper chat = gson.fromJson(chatObj.toString(), SqlChatWrapper.class);
-                                    if(s.time > chat.timestamp) {
-                                        //è necessario aggiornare
-                                        chat.lastRandom = s.randomId;
-                                        chat.lastMessage = s.textMsg;
-                                        chat.lastUser = s.fromName;
-                                        updateChat(chat, cbc);
-                                    } else {
-                                        //TODO fare update della chat
-                                        if(cbc != null) {
-                                            cbc.success(arr);
-                                        }
-                                    }
+                                    if(chatArr == null || chatArr.length() <= 0) {
+                                        LogUtils.printLog(tag, "FASE5 need create chat ");
+                                        Map<String, Object> vals = messageToChat(m, true);
 
+                                        saveChat(vals, cbc);
+                                    } else {
+                                        //qui è necessario verificare se devo aggiornare la chat
+                                        JSONObject chatObj = chatArr.optJSONObject(0);
+                                        if(chatObj == null) {
+                                            LogUtils.printLog(tag, "FASE5 need create chat ");
+                                            addChat(m, cbc);
+                                            return;
+                                        }
+                                        LogUtils.printLog(tag, "FASE6 update chat ");
+                                        Gson gson = new Gson();
+                                        SqlChatWrapper chat = gson.fromJson(chatObj.toString(), SqlChatWrapper.class);
+                                        if(s.time > chat.timestamp) {
+                                            //è necessario aggiornare
+                                            chat.lastRandom = s.randomId;
+                                            chat.lastMessage = s.textMsg;
+                                            chat.lastUser = s.fromName;
+                                            updateChat(chat, cbc);
+                                        } else {
+                                            //TODO fare update della chat
+                                            if(cbc != null) {
+                                                cbc.success(arr);
+                                            }
+                                        }
+
+                                    }
                                 }
-                            }
                         });
 
                     } catch (Exception e) {
@@ -580,6 +582,15 @@ public class CommunicationMessageService {
     }
 
     public static void addChat(Map<String, Object> messageMap, SQLiteAndroidDatabaseCallback cbc) {
+        Map<String, Object> contentValue = messageToChat(messageMap);
+        saveChat(contentValue, cbc);
+    }
+
+    public static Map<String, Object> messageToChat(Map<String, Object> messageMap) {
+        return messageToChat(messageMap, false);
+    }
+
+    public static Map<String, Object> messageToChat(Map<String, Object> messageMap, boolean isSend) {
         Integer numNotRead = 1;
         Map<String, Object> contentValue = new HashMap<String, Object>();
 
@@ -589,8 +600,14 @@ public class CommunicationMessageService {
             contentValue.put("lastuser", messageMap.get("fromName"));
             contentValue.put("chatName", messageMap.get("toName"));
         } else {
-            contentValue.put("chatName", messageMap.get("fromName"));
-            contentValue.put("uuid", messageMap.get("fromId"));
+            if(isSend) {
+                contentValue.put("chatName", messageMap.get("toName"));
+                contentValue.put("uuid", messageMap.get("toId"));
+            } else {
+                contentValue.put("chatName", messageMap.get("fromName"));
+                contentValue.put("uuid", messageMap.get("fromId"));
+            }
+
             contentValue.put("isGroup", false);
             contentValue.put("lastuser", messageMap.get("fromName"));
         }
@@ -598,7 +615,7 @@ public class CommunicationMessageService {
         contentValue.put("lastMessage", messageMap.get("textMsg"));
         contentValue.put("timestamp", messageMap.get("time"));
         contentValue.put("numNotRead",numNotRead);
-        saveChat(contentValue, cbc);
+        return contentValue;
     }
 
     public static void saveChat(Map<String, Object> chatMap, SQLiteAndroidDatabaseCallback cbc) {
@@ -816,6 +833,64 @@ public class CommunicationMessageService {
             }
         }
         return container;
+    }
+
+    public static void findMessage(Long id, SQLiteAndroidDatabaseCallback cbc) {
+        //TODO gestire le chat di gruppo
+        String query = null;
+        /*if(isGroup)
+            query = "SELECT * FROM Chat where groupId=?";
+        else
+            query = "SELECT * FROM Chat where fromId=?";*/
+        QueryGroupObj group = new QueryGroupObj();
+        group.condition = "and";
+        group.fields = new LinkedList<QuerySelectObj>();
+        QuerySelectObj qso = new QuerySelectObj("id", "=", id);
+        QueryObj qo = selectQuery("Message", group, 0, null, null);
+
+        CommunicationServiceSqlUtil.executeSingle(qo.query, qo.params, new SQLiteAndroidDatabaseCallback() {
+
+            public void error(String error) {
+                LogUtils.printLog(tag, "search message dbquery callback error " + error);
+                if(cbc != null)
+                    cbc.error(error);
+            }
+
+            public void success(JSONArray arr) {
+                LogUtils.printLog(tag, "search message dbquery callback " + arr);
+                if(cbc != null)
+                    cbc.success(arr);
+            }
+        });
+    }
+
+    public static void updateMessage(Long id, Map<String, Object> fields, SQLiteAndroidDatabaseCallback cbc) {
+        //TODO gestire le chat di gruppo
+        String query = null;
+        /*if(isGroup)
+            query = "SELECT * FROM Chat where groupId=?";
+        else
+            query = "SELECT * FROM Chat where fromId=?";*/
+        QueryGroupObj group = new QueryGroupObj();
+        group.condition = "and";
+        group.fields = new LinkedList<QuerySelectObj>();
+        QuerySelectObj qso = new QuerySelectObj("id", "=", id);
+        QueryObj qo = updateQuery("Message", fields, group);
+
+        CommunicationServiceSqlUtil.executeSingle(qo.query, qo.params, new SQLiteAndroidDatabaseCallback() {
+
+            public void error(String error) {
+                LogUtils.printLog(tag, "search message dbquery callback error " + error);
+                if(cbc != null)
+                    cbc.error(error);
+            }
+
+            public void success(JSONArray arr) {
+                LogUtils.printLog(tag, "search message dbquery callback " + arr);
+                if(cbc != null)
+                    cbc.success(arr);
+            }
+        });
     }
 
 }

@@ -52,6 +52,24 @@
         <source-file src="src/android/models/MessageWrapper.java" target-dir="src/it/linup/cordova/plugin/communication/models" />
         <source-file src="src/android/models/SqlMessageWrapper.java" target-dir="src/it/linup/cordova/plugin/communication/models" />
         <source-file src="src/android/models/SqlChatWrapper.java" target-dir="src/it/linup/cordova/plugin/communication/models" />
+        
+        <source-file src="src/android/iphone_old_phone.mp3" target-dir="assets" />
+        <source-file src="src/android/old_phone.mp3" target-dir="assets" />
+        <source-file src="src/android/old_telephone.mp3" target-dir="assets" />
+
+        <source-file src="src/android/drawable/rounded_green.xml" target-dir="res/drawable" />
+        <source-file src="src/android/drawable/rounded_red.xml" target-dir="res/drawable" />
+
+        <source-file src="src/android/drawable-hdpi/ic_call_end_white_48dp.png" target-dir="res/drawable-hdpi" />
+        <source-file src="src/android/drawable-hdpi/ic_call_white_48dp.png" target-dir="res/drawable-hdpi" />
+        <source-file src="src/android/drawable-mdpi/ic_call_end_white_48dp.png" target-dir="res/drawable-mdpi" />
+        <source-file src="src/android/drawable-mdpi/ic_call_white_48dp.png" target-dir="res/drawable-mdpi" />
+        <source-file src="src/android/drawable-xhdpi/ic_call_end_white_48dp.png" target-dir="res/drawable-xhdpi" />
+        <source-file src="src/android/drawable-xhdpi/ic_call_white_48dp.png" target-dir="res/drawable-xhdpi" />
+        <source-file src="src/android/drawable-xxhdpi/ic_call_end_white_48dp.png" target-dir="res/drawable-xxhdpi" />
+        <source-file src="src/android/drawable-xxhdpi/ic_call_white_48dp.png" target-dir="res/drawable-xxhdpi" />
+        <source-file src="src/android/drawable-xxxhdpi/ic_call_end_white_48dp.png" target-dir="res/drawable-xxxhdpi" />
+        <source-file src="src/android/drawable-xxxhdpi/ic_call_white_48dp.png" target-dir="res/drawable-xxxhdpi" />
 
     </platform>
 </plugin>

@@ -136,6 +136,27 @@ CommunicationServicePlugin.prototype.send = function(msg, successCallback, error
   cordova.exec(successCallback, errorCallback, 'CommunicationServicePlugin', 'send', [options]);
 }
 
+CommunicationServicePlugin.prototype.sendSocket = function(msg, successCallback, errorCallback) {
+  var options = {};
+  options.params = msg;
+  cordova.exec(successCallback, errorCallback, 'CommunicationServicePlugin', 'sendSocket', [options]);
+} 
+
+CommunicationServicePlugin.prototype.checkSocket = function(successCallback, errorCallback) {
+  var options = {};
+  cordova.exec(successCallback, errorCallback, 'CommunicationServicePlugin', 'checkSocket', [options]);
+} 
+
+CommunicationServicePlugin.prototype.read = function(message, successCallback, errorCallback) {
+  var options = {};
+  options.id = message.id;
+  options.fromId = message.fromId;
+  options.randomId = message.randomId;
+  if(message.isGroup)
+    options.groupId = message.groupId;
+  cordova.exec(successCallback, errorCallback, 'CommunicationServicePlugin', 'read', [options]);
+}
+
 CommunicationServicePlugin.prototype.startBackground = function(successCallback, errorCallback) {
   cordova.plugins.backgroundMode.enable();
 }

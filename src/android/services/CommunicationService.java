@@ -64,6 +64,9 @@ import it.linup.cordova.plugin.communication.services.CommunicationMessageServic
 public class CommunicationService extends Service implements WebsocketListnerInterface {
 
     private boolean isConnected = false;
+    public static boolean isCalling = false;
+    public static String fromId;
+    public static String fromName;
     protected static boolean requestHeartBit = false;
     protected static int failedHeartBit = 0;
     protected static JSONArray lstUser;
@@ -231,10 +234,11 @@ public class CommunicationService extends Service implements WebsocketListnerInt
         LogUtils.printLog(tag," onDestroy "  + reconnect);
     }
 
-    public void startActivity(){
+    public static void startActivity(String info, String status){
         //Context context = cordova.getActivity().getApplicationContext();
-        Intent intent = new Intent(mContext, IncomingCallActivity.class);
-        mContext.startActivity(intent);
+        mContext.startActivity(new Intent(mContext, IncomingCallActivity.class)
+                .putExtra("info", info)
+                .putExtra("status", status));
     }
 
     public void onEvent(String event, String data) {
@@ -338,6 +342,33 @@ public class CommunicationService extends Service implements WebsocketListnerInt
                     break;
                 case ENTERGROUP:
                     this.enterGroup(jobj, null);
+                    break;
+                case CALL:
+                    JSONObject data = jobj.getJSONObject("data");
+                    String status = data.getString("status");
+
+                    if("calling".equals(status)) {
+                        CommunicationService.isCalling = true;
+                        CommunicationService.fromId = data.getString("from");
+                        CommunicationService.fromName = data.getString("fromCompleteName");
+                        startActivity(CommunicationService.fromName, "videocall");
+                    } else if("reject".equals(status)) {
+                        if(CommunicationService.isCalling) {
+                            CommunicationService.isCalling = false;
+                            CommunicationService.fromId = null;
+                            CommunicationService.fromName = null;
+                        }
+                    } else if("leave".equals(status)) {
+                        if(CommunicationService.isCalling) {
+                            CommunicationService.isCalling = false;
+                            CommunicationService.fromId = null;
+                            CommunicationService.fromName = null;
+                        }
+                    }
+                    if (_plugin != null) {
+                        //Gson gson = new Gson();
+                        _plugin.generateEvent(CALL, message);
+                    }
                     break;
                 default:
                     LogUtils.printLog(tag, "Event not found " + event + " " + jobj.toString());
@@ -560,6 +591,44 @@ public class CommunicationService extends Service implements WebsocketListnerInt
         });
     }
 
+    public void sendSocket(String message, CallbackContext cbc) {
+        WebsocketService.instance().asyncSend(message);
+        if(cbc != null) {
+            PluginResult pluginResult = new PluginResult(PluginResult.Status.OK);
+            cbc.sendPluginResult(pluginResult);
+        }
+    }
+
+    public void checkSocket(CallbackContext cbc) {
+        boolean isConnected = WebsocketService.instance().getConnected();
+        if(cbc != null) {
+            PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, isConnected);
+            cbc.sendPluginResult(pluginResult);
+        }
+    }
+
+    public static void read(Long id, String fromId, String randomId, String groupId, CallbackContext cbc) {
+        Map<String, Object> fields = new HashMap<String, Object>();
+        fields.put("isRead", true);
+        CommunicationMessageService.updateMessage(id, fields, new SQLiteAndroidDatabaseCallback() {
+            public void error(String error) {
+                LogUtils.printLog(tag, "dbquery callback error " + error);
+                if (cbc != null) {
+                    cbc.error(error);
+                }
+            }
+
+            public void success(JSONArray arr) {
+                ReceiveReadMessagesReq r = new ReceiveReadMessagesReq();
+                if(groupId != null)
+                    r.groupId = groupId;
+                r.lastRandom = Long.parseLong(randomId);
+                r.userUuid = fromId;
+                sendToWebsocket(READMESSAGE, r);
+            }
+        });
+    }
+
     public static class SendMessageRequest {
         public String fromId;
         public String fromName;
@@ -736,6 +805,38 @@ public class CommunicationService extends Service implements WebsocketListnerInt
         if (_plugin != null) {
             LogUtils.printLog(tag, "generateEvent send to plugin generate event");
             _plugin.generateEvent(event, obj);
+        }
+    }
+
+    public static void callEvent(String event, String obj) {
+        LogUtils.printLog(tag, "generateEvent send to plugin");
+        if("onAcceptCall".equals(event)) {
+            if(CommunicationService.isCalling) {
+                Map<String, Object> ob = new HashMap<String, Object>();
+                ob.put("event", "call");
+                Map<String, Object> m = new HashMap<String, Object>();
+                m.put("status", event);
+                m.put("from", CommunicationService.fromId);
+                m.put("fromCompleteName", CommunicationService.fromName);
+                ob.put("data", m);
+
+                if (_plugin != null) {
+                    Gson gson = new Gson();
+                    LogUtils.printLog(tag, "generateEvent send to plugin generate event");
+                    _plugin.generateEvent(CALL, gson.toJson(ob));
+                }
+            }
+        } else if("onCancelCall".equals(event)) {
+            Map<String, Object> m = new HashMap<String, Object>();
+            m.put("status", "reject");
+            m.put("toUserId", CommunicationService.fromId);
+            Gson gson = new Gson();
+            sendToWebsocket(CALL, gson.toJson(m));
+        } else {
+            if (_plugin != null) {
+                LogUtils.printLog(tag, "generateEvent send to plugin generate event");
+                _plugin.generateEvent(event, obj);
+            }
         }
     }
 }
