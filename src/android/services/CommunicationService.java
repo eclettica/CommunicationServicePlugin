@@ -14,6 +14,8 @@ import android.os.PowerManager;
 import android.os.Vibrator;
 import android.util.Log;
 
+import java.lang.reflect.Field;
+
 import android.os.Binder;
 
 //import com.idra.modules.DbSql.DBManager;
@@ -343,6 +345,25 @@ public class CommunicationService extends Service implements WebsocketListnerInt
                 case ENTERGROUP:
                     this.enterGroup(jobj, null);
                     break;
+                case SENDMESSAGE: {
+                        JSONObject data = jobj.getJSONObject("data");
+                        data = data.getJSONObject("result");
+                        this.receiveSendMessage(data);
+                    }
+                    break;
+                case RECEIVEMESSAGE: {
+                    JSONObject data = jobj.getJSONObject("data");
+                    data = data.getJSONObject("result");
+                    this.receiveReceiveMessage(data);
+                }
+                break;
+                case READMESSAGE: {
+                    JSONObject data = jobj.getJSONObject("data");
+                    data = data.getJSONObject("result");
+                    this.receiveReadMessage(data);
+                }
+                break;
+
                 case CALL:
                     JSONObject data = jobj.getJSONObject("data");
                     String status = data.getString("status");
@@ -351,7 +372,30 @@ public class CommunicationService extends Service implements WebsocketListnerInt
                         CommunicationService.isCalling = true;
                         CommunicationService.fromId = data.getString("from");
                         CommunicationService.fromName = data.getString("fromCompleteName");
-                        startActivity(CommunicationService.fromName, "videocall");
+                        int delay=500;
+                        Boolean isActive = null;
+                        try {
+                            String package_name = getApplication().getPackageName();
+                            Class<?> clazz = Class.forName(package_name + "MainActivity");
+                            Field f = clazz.getField("active");
+                            isActive = f.getBoolean(null);
+                        } catch(Exception e) {
+                            LogUtils.printLog(tag,"exception... " + e.getMessage());
+                            e.printStackTrace();
+                        }
+                        if (isActive == null || !isActive)
+                        {
+                            LogUtils.printLog(tag,"APP RIAVVIATA");
+                            delay=4000;
+                            restartApp();
+                        }
+                        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+                            @Override
+                            public void run() {
+                                startActivity(CommunicationService.fromName, "videocall");
+                            }
+                        }, delay);
+
                     } else if("reject".equals(status)) {
                         if(CommunicationService.isCalling) {
                             CommunicationService.isCalling = false;
@@ -377,6 +421,16 @@ public class CommunicationService extends Service implements WebsocketListnerInt
             LogUtils.printLog(tag, "exception " + jex.getMessage());
         }
 
+    }
+
+    public static void receiveSendMessage(JSONObject data) {
+        CommunicationMessageService.receiveSendMessage(data);
+    }
+    public static void receiveReceiveMessage(JSONObject data) {
+        CommunicationMessageService.receiveReceiveMessage(data);
+    }
+    public static void receiveReadMessage(JSONObject data) {
+        CommunicationMessageService.receiveReadMessage(data);
     }
 
     public static void enterGroup(JSONObject jobj, CallbackContext cbc) {
@@ -830,13 +884,20 @@ public class CommunicationService extends Service implements WebsocketListnerInt
             Map<String, Object> m = new HashMap<String, Object>();
             m.put("status", "reject");
             m.put("toUserId", CommunicationService.fromId);
-            Gson gson = new Gson();
-            sendToWebsocket(CALL, gson.toJson(m));
+            sendToWebsocket(CALL, m);
         } else {
             if (_plugin != null) {
                 LogUtils.printLog(tag, "generateEvent send to plugin generate event");
                 _plugin.generateEvent(event, obj);
             }
         }
+    }
+
+    private void restartApp() {
+        Intent i = getBaseContext().getPackageManager().
+                getLaunchIntentForPackage(getBaseContext().getPackageName());
+        i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(i);
     }
 }

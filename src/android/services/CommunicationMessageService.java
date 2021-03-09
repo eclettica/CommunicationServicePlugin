@@ -296,9 +296,11 @@ public class CommunicationMessageService {
                                         SqlChatWrapper chat = gson.fromJson(chatObj.toString(), SqlChatWrapper.class);
                                         if(s.time > chat.timestamp) {
                                             //è necessario aggiornare
+
                                             chat.lastRandom = s.randomId;
                                             chat.lastMessage = s.textMsg;
                                             chat.lastUser = s.fromName;
+                                            chat.timestamp = s.time;
                                             updateChat(chat, cbc);
                                         } else {
                                             //TODO fare update della chat
@@ -889,6 +891,97 @@ public class CommunicationMessageService {
                 LogUtils.printLog(tag, "search message dbquery callback " + arr);
                 if(cbc != null)
                     cbc.success(arr);
+            }
+        });
+    }
+
+    public static void receiveSendMessage(JSONObject data) {
+        receiveEventMessage(data, "isSent");
+    }
+    public static void receiveReceiveMessage(JSONObject data) {
+        receiveEventMessage(data, "isReceived");
+    }
+    public static void receiveReadMessage(JSONObject data) {
+        receiveEventMessage(data, "isRead");
+    }
+
+    public static void receiveEventMessage(JSONObject data, String eventField) {
+        try {
+            LogUtils.printLog(tag, "receiveEventMessage " + eventField + " " + data.toString());
+            String randomId = "" + data.getLong("randomId");
+            String uuid = data.getString("uuid");
+            Boolean isGroup = data.getBoolean("isGroup");
+            searchForMessage(uuid, randomId, isGroup, new SQLiteAndroidDatabaseCallback() {
+
+                public void error(String error) {
+                    LogUtils.printLog(tag, "receiveEventMessage - search messages dbquery callback error " + error);
+
+                }
+
+                public void success(JSONArray arr) {
+                    try {
+                        if (arr == null || arr.length() <= 0)
+                            return;
+                        JSONObject obj = arr.getJSONObject(0);
+
+                        Long id = obj.getLong("id");
+
+                        Map<String, Object> fields = new HashMap<String, Object>();
+                        obj.put(eventField, true);
+                        fields.put(eventField, true);
+                        if(eventField.equals("isRead")) {
+                            obj.put("isReceived", true);
+                            fields.put("isReceived", true);
+                        }
+
+                        updateMessage(id, fields, new SQLiteAndroidDatabaseCallback() {
+
+                            public void error(String error) {
+                                LogUtils.printLog(tag, "receiveEventMessage - search messages dbquery callback error " + error);
+                            }
+
+                            public void success(JSONArray arr) {
+                                Gson gson = new Gson();
+                                String evt = CommunicationService.SENDMESSAGE;
+                                if(eventField.equals("isRead")) {
+                                    evt = CommunicationService.READMESSAGE;
+                                } else if(eventField.equals("isReceived")) {
+                                    evt = CommunicationService.RECEIVEMESSAGE;
+                                }
+                                CommunicationService.generateEvent(evt, gson.toJson(obj));
+                            }
+                        });
+                    } catch(JSONException jex) {
+                        LogUtils.printLog(tag, "exception " + jex.getMessage());
+                    }
+                }
+            });
+
+        } catch(JSONException jex) {
+            LogUtils.printLog(tag, "exception " + jex.getMessage());
+        }
+    }
+
+    public static void searchForMessage(String uuid, String randomId, Boolean isGroup, SQLiteAndroidDatabaseCallback dbc) {
+        LogUtils.printLog(tag, "searchForMessage " + uuid + " " + randomId + " " + isGroup);
+        List<QuerySelectObj> conds = new LinkedList<QuerySelectObj>();
+        conds.add(new QuerySelectObj("randomId", "=",randomId));
+        getChatMessages(uuid, isGroup, 0, 1, conds, null, new SQLiteAndroidDatabaseCallback() {
+
+            public void error(String error) {
+                LogUtils.printLog(tag, "searchForMessage - search messages dbquery callback error " + error);
+                if(dbc != null)
+                    dbc.error(error);
+            }
+
+            public void success(JSONArray arr) {
+                try {
+                    arr = extractResult(arr);
+                    if(dbc != null)
+                        dbc.success(arr);
+                } catch(Exception e) {
+                    LogUtils.printLog(tag, "exception " + e.getMessage());
+                }
             }
         });
     }
