@@ -673,6 +673,7 @@ public class CommunicationService extends Service implements WebsocketListnerInt
             }
 
             public void success(JSONArray arr) {
+                CommunicationMessageService.findChatCountAndUpdate(fromId, groupId != null ? true : false, null);
                 ReceiveReadMessagesReq r = new ReceiveReadMessagesReq();
                 if(groupId != null)
                     r.groupId = groupId;
@@ -682,6 +683,8 @@ public class CommunicationService extends Service implements WebsocketListnerInt
             }
         });
     }
+
+
 
     public static class SendMessageRequest {
         public String fromId;

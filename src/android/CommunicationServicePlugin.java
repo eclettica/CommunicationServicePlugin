@@ -244,6 +244,7 @@ public class CommunicationServicePlugin extends CordovaPlugin {
                     break;
                 case "addChat":
                     this.addChat(options, callbackContext);
+                    break;
                 case "vibrate":
                     this.vibrate(callbackContext);
                     break;

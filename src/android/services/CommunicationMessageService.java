@@ -195,13 +195,15 @@ public class CommunicationMessageService {
                                     LogUtils.printLog(tag, "FASE6 update chat ");
                                     Gson gson = new Gson();
                                     SqlChatWrapper chat = gson.fromJson(chatObj.toString(), SqlChatWrapper.class);
+
                                     if(s.time > chat.timestamp) {
                                         //è necessario aggiornare
+
                                         chat.lastRandom = s.randomId;
                                         chat.lastMessage = s.textMsg;
                                         chat.lastUser = s.fromName;
                                         chat.timestamp = s.time;
-                                        updateChat(chat, cbc);
+                                        checkNotReadAndUpdate(chat, cbc);
                                     } else {
                                         if(cbc != null) {
                                             cbc.success(arr);
@@ -301,7 +303,7 @@ public class CommunicationMessageService {
                                             chat.lastMessage = s.textMsg;
                                             chat.lastUser = s.fromName;
                                             chat.timestamp = s.time;
-                                            updateChat(chat, cbc);
+                                            checkNotReadAndUpdate(chat, cbc);
                                         } else {
                                             //TODO fare update della chat
                                             if(cbc != null) {
@@ -323,6 +325,45 @@ public class CommunicationMessageService {
             if(cbc != null)
                 cbc.error("Exception " + e.getMessage());
         }
+    }
+
+    public static void findChatCountAndUpdate(String groupId, boolean isGroup, SQLiteAndroidDatabaseCallback cbc) {
+        findChat(groupId, isGroup, new SQLiteAndroidDatabaseCallback() {
+            public void error(String error) {
+                LogUtils.printLog(tag, "dbquery callback error " + error);
+                if (cbc != null)
+                    cbc.error(error);
+            }
+            public void success(JSONArray arr) {
+                JSONArray chatArr = null;
+                try {
+                    chatArr = extractResult(arr);
+                } catch(JSONException ex) {
+                    chatArr = null;
+                } catch(Exception e) {
+                    if(cbc != null)
+                        cbc.error(e.getMessage());
+                    return;
+                }
+                if(chatArr == null || chatArr.length() <= 0) {
+                    LogUtils.printLog(tag, "chat not fuond");
+                    if(cbc != null)
+                        cbc.error("chat not fuond");
+                } else {
+                    //qui è necessario verificare se devo aggiornare la chat
+                    JSONObject chatObj = chatArr.optJSONObject(0);
+                    if(chatObj == null) {
+                        LogUtils.printLog(tag, "chat not fuond");
+                        if(cbc != null)
+                            cbc.error("chat not fuond");
+                    }
+                    LogUtils.printLog(tag, "update chat ");
+                    Gson gson = new Gson();
+                    SqlChatWrapper chat = gson.fromJson(chatObj.toString(), SqlChatWrapper.class);
+                    checkNotReadAndUpdate(chat, cbc);
+                }
+            }
+        });
     }
 
     public static void findChat(String groupId, boolean isGroup, SQLiteAndroidDatabaseCallback cbc) {
@@ -555,6 +596,52 @@ public class CommunicationMessageService {
             }
         });
     }*/
+
+    public static void checkNotReadAndUpdate(SqlChatWrapper chat, SQLiteAndroidDatabaseCallback cbc) {
+        QueryObj qo = new QueryObj();
+        qo.query = "SELECT COUNT(*) as c from Message where ";
+        if(chat.isGroup) {
+            qo.query += "groupId='" + chat.uuid + "' and toId is not null and isRead='false'";
+        } else {
+            qo.query += "groupId='" + chat.uuid + "' and fromId='" + chat.uuid + "' and isRead='false'";
+        }
+        qo.params = new JSONArray();
+
+        CommunicationServiceSqlUtil.executeSingle(qo.query, qo.params, new SQLiteAndroidDatabaseCallback() {
+
+            public void error(String error) {
+                LogUtils.printLog(tag, "AAAAAAAA check not read messages error " + error);
+                if(cbc != null)
+                    cbc.error(error);
+            }
+
+            public void success(JSONArray arr) {
+                LogUtils.printLog(tag, "AAAAAAAA not read messages... " + arr);
+                try {
+                    arr = extractResult(arr);
+                    if (arr == null || arr.length() <= 0) {
+                        if (cbc != null)
+                            cbc.error("result not found...");
+                        return;
+                    }
+                    JSONObject obj = arr.getJSONObject(0);
+                    if (obj == null) {
+                        if (cbc != null)
+                            cbc.error("result obj not found...");
+                        return;
+                    }
+                    Integer count = obj.getInt("c");
+                    chat.numNotRead = count;
+                    updateChat(chat, cbc);
+                } catch(Exception e) {
+                    LogUtils.printLog(tag, "AAAAAAAA check not read messages error " + e.getMessage());
+                    if(cbc != null)
+                        cbc.error(e.getMessage());
+                }
+            }
+        });
+
+    }
 
     public static void updateChat(SqlChatWrapper chat, SQLiteAndroidDatabaseCallback cbc) {
         Map<String, Object> chatMap = convertChatToMap(chat);
@@ -877,6 +964,7 @@ public class CommunicationMessageService {
         group.condition = "and";
         group.fields = new LinkedList<QuerySelectObj>();
         QuerySelectObj qso = new QuerySelectObj("id", "=", id);
+        group.fields.add(qso);
         QueryObj qo = updateQuery("Message", fields, group);
 
         CommunicationServiceSqlUtil.executeSingle(qo.query, qo.params, new SQLiteAndroidDatabaseCallback() {
@@ -896,21 +984,26 @@ public class CommunicationMessageService {
     }
 
     public static void receiveSendMessage(JSONObject data) {
-        receiveEventMessage(data, "isSent");
+            receiveEventMessage(data, "isSent", "randomId", "uuid");
+
     }
     public static void receiveReceiveMessage(JSONObject data) {
-        receiveEventMessage(data, "isReceived");
+        receiveEventMessage(data, "isReceived", "lastRandom", "userId");
+
     }
     public static void receiveReadMessage(JSONObject data) {
-        receiveEventMessage(data, "isRead");
+        receiveEventMessage(data, "isRead", "lastRandom", "userId");
+        
     }
 
-    public static void receiveEventMessage(JSONObject data, String eventField) {
+    public static void receiveEventMessage(JSONObject data, String eventField, String randomField, String userField) {
         try {
-            LogUtils.printLog(tag, "receiveEventMessage " + eventField + " " + data.toString());
-            String randomId = "" + data.getLong("randomId");
-            String uuid = data.getString("uuid");
-            Boolean isGroup = data.getBoolean("isGroup");
+            LogUtils.printLog(tag, "receiveEventMessage " + eventField + " " + randomField + " " + data.toString());
+            String randomId = "" + data.getLong(randomField);
+            String uuid = data.getString(userField);
+            Boolean isGroup = data.optBoolean("isGroup");
+            if(isGroup == null)
+                isGroup = false;
             searchForMessage(uuid, randomId, isGroup, new SQLiteAndroidDatabaseCallback() {
 
                 public void error(String error) {
@@ -927,10 +1020,10 @@ public class CommunicationMessageService {
                         Long id = obj.getLong("id");
 
                         Map<String, Object> fields = new HashMap<String, Object>();
-                        obj.put(eventField, true);
+                        obj.put(eventField, "true");
                         fields.put(eventField, true);
                         if(eventField.equals("isRead")) {
-                            obj.put("isReceived", true);
+                            obj.put("isReceived", "true");
                             fields.put("isReceived", true);
                         }
 
