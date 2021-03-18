@@ -38,6 +38,9 @@ import it.linup.cordova.plugin.utils.FileUtils;
 
 import it.linup.cordova.plugin.services.WebsocketListnerInterface;
 import it.linup.cordova.plugin.services.WebsocketService;
+import it.linup.cordova.plugin.services.NotificationService;
+
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -82,6 +85,8 @@ public class CommunicationService extends Service implements WebsocketListnerInt
     private String currentSessionId;
 
     public static CommunicationServicePlugin _plugin = null;
+
+    public static Class _mainClass = null;
 
     public static final String USERSLIST = "userslist";
     public static final String UPDATEUSERS = "updateusers";
@@ -135,6 +140,11 @@ public class CommunicationService extends Service implements WebsocketListnerInt
     public void setPlugin(CommunicationServicePlugin plugin) {
 
         _plugin = plugin;
+    }
+
+    public void setMainClass(Class mainClass) {
+
+        _mainClass = mainClass;
     }
 
     public CommunicationServicePlugin getPlugin() {
@@ -902,5 +912,35 @@ public class CommunicationService extends Service implements WebsocketListnerInt
         i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
         i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(i);
+    }
+
+    public static void checkNotReadAndUpdateNotification() {
+        CommunicationMessageService.checkNotRead(new SQLiteAndroidDatabaseCallback() {
+
+            public void error(String error) {
+                LogUtils.printLog(tag, "AAAAAAAA check not read messages error " + error);
+
+            }
+
+            public void success(JSONArray arr) {
+
+            }
+
+            @Override
+            public void successObj(Object obj) {
+                Integer c = null;
+                if(obj != null) {
+                    c = (Integer) obj;
+                    LogUtils.printLog(tag, "AAAAAAAA check not read successObj " + c);
+                    CommunicationService.instance().updateNotification(null, c);
+                } else {
+                    LogUtils.printLog(tag, "AAAAAAAA check not read successObj NULL!!!");
+                }
+            }
+        });
+    }
+
+    private void updateNotification(Boolean b, Integer num) {
+        NotificationService.instance().updateNotification(b, this, _mainClass);
     }
 }

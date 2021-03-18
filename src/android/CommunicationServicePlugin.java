@@ -86,6 +86,7 @@ public class CommunicationServicePlugin extends CordovaPlugin {
              ForegroundBinder binder = (ForegroundBinder) service;
              CommunicationServicePlugin.this.service = binder.getService();
              CommunicationServicePlugin.this.service.setPlugin(CommunicationServicePlugin.this);
+             CommunicationServicePlugin.this.service.setMainClass(getMainActivityClass());
          }
  
          @Override
@@ -494,6 +495,23 @@ public class CommunicationServicePlugin extends CordovaPlugin {
         }
     }
 
+    public Class getMainActivityClass() {
+        Class mainActivity;
+        Context context = getApplicationContext();
+        String  packageName = context.getPackageName();
+        Intent  launchIntent = context.getPackageManager().getLaunchIntentForPackage(packageName);
+        String  className = launchIntent.getComponent().getClassName();
+
+        try {
+            //loading the Main Activity to not import it in the plugin
+            mainActivity = Class.forName(className);
+            return mainActivity;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     public void sendEvent(String eventName, String params) {
         try {
             LogUtils.printLog(tag,"SendEventToJS " + eventName);
@@ -603,23 +621,6 @@ public class CommunicationServicePlugin extends CordovaPlugin {
         final String js = str;
 
         cordova.getActivity().runOnUiThread(() -> webView.loadUrl("javascript:" + js));
-    }
-
-    public Class getMainActivityClass() {
-        Class mainActivity;
-        Context context = getApplicationContext();
-        String  packageName = context.getPackageName();
-        Intent  launchIntent = context.getPackageManager().getLaunchIntentForPackage(packageName);
-        String  className = launchIntent.getComponent().getClassName();
-
-        try {
-            //loading the Main Activity to not import it in the plugin
-            mainActivity = Class.forName(className);
-            return mainActivity;
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return null;
     }
 
 }

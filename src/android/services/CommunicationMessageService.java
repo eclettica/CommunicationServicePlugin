@@ -204,6 +204,7 @@ public class CommunicationMessageService {
                                         chat.lastUser = s.fromName;
                                         chat.timestamp = s.time;
                                         checkNotReadAndUpdate(chat, cbc);
+                                        CommunicationService.checkNotReadAndUpdateNotification();
                                     } else {
                                         if(cbc != null) {
                                             cbc.success(arr);
@@ -304,6 +305,7 @@ public class CommunicationMessageService {
                                             chat.lastUser = s.fromName;
                                             chat.timestamp = s.time;
                                             checkNotReadAndUpdate(chat, cbc);
+                                            CommunicationService.checkNotReadAndUpdateNotification();
                                         } else {
                                             //TODO fare update della chat
                                             if(cbc != null) {
@@ -361,6 +363,7 @@ public class CommunicationMessageService {
                     Gson gson = new Gson();
                     SqlChatWrapper chat = gson.fromJson(chatObj.toString(), SqlChatWrapper.class);
                     checkNotReadAndUpdate(chat, cbc);
+                    CommunicationService.checkNotReadAndUpdateNotification();
                 }
             }
         });
@@ -470,6 +473,7 @@ public class CommunicationMessageService {
     }
 
     public static void getChatMessages(String uuid, Boolean isGroup, Integer page, Integer limit, List<QuerySelectObj> conds, CallbackContext cbc, SQLiteAndroidDatabaseCallback dbc) {
+
         LogUtils.printLog(tag, "getChatMessages " + uuid + " " + isGroup);
         Map<String, String> sortMap = new HashMap<String, String>();
         sortMap.put("time", "DESC");
@@ -633,6 +637,53 @@ public class CommunicationMessageService {
                     Integer count = obj.getInt("c");
                     chat.numNotRead = count;
                     updateChat(chat, cbc);
+                } catch(Exception e) {
+                    LogUtils.printLog(tag, "AAAAAAAA check not read messages error " + e.getMessage());
+                    if(cbc != null)
+                        cbc.error(e.getMessage());
+                }
+            }
+        });
+
+    }
+
+    public static void checkNotRead(SQLiteAndroidDatabaseCallback cbc) {
+        QueryObj qo = new QueryObj();
+        qo.query = "SELECT COUNT(*) as c from Message where ";
+        qo.query += ("(isGroup='true' and toId is not null and isRead='false')");
+        qo.query += (" or ");
+        qo.query += ("(isGroup='false' and groupId=fromId and isRead='false')");
+        qo.params = new JSONArray();
+
+        CommunicationServiceSqlUtil.executeSingle(qo.query, qo.params, new SQLiteAndroidDatabaseCallback() {
+
+            public void error(String error) {
+                LogUtils.printLog(tag, "AAAAAAAA check not read messages error " + error);
+                if(cbc != null)
+                    cbc.error(error);
+            }
+
+            public void success(JSONArray arr) {
+                LogUtils.printLog(tag, "AAAAAAAA not read messages... " + arr);
+                try {
+                    arr = extractResult(arr);
+                    if (arr == null || arr.length() <= 0) {
+                        if (cbc != null)
+                            cbc.error("result not found...");
+                        return;
+                    }
+                    JSONObject obj = arr.getJSONObject(0);
+                    if (obj == null) {
+                        if (cbc != null)
+                            cbc.error("result obj not found...");
+                        return;
+                    }
+                    Integer count = obj.getInt("c");
+                    try {
+                        cbc.successObj(count);
+                    } catch(Exception ex) {
+                        cbc.success(arr);
+                    }
                 } catch(Exception e) {
                     LogUtils.printLog(tag, "AAAAAAAA check not read messages error " + e.getMessage());
                     if(cbc != null)
