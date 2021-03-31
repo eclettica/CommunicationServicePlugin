@@ -130,6 +130,13 @@ CommunicationServicePlugin.prototype.addChat = function(uuid, groupName, groupMe
   cordova.exec(successCallback, errorCallback, 'CommunicationServicePlugin', 'addChat', [options]);
 }
 
+CommunicationServicePlugin.prototype.updateChatCount = function(uuid, isGroup, successCallback, errorCallback) {
+  var options = {};
+  options.uuid = uuid;
+  options.isGroup = isGroup;
+  cordova.exec(successCallback, errorCallback, 'CommunicationServicePlugin', 'updateChatCount', [options]);
+}
+
 CommunicationServicePlugin.prototype.send = function(msg, successCallback, errorCallback) {
   var options = {};
   options.params = msg;

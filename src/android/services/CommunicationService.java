@@ -694,6 +694,10 @@ public class CommunicationService extends Service implements WebsocketListnerInt
         });
     }
 
+    public static void findChatCountAndUpdate(String fromId, boolean isGroup, SQLiteAndroidDatabaseCallback cbc) {
+        CommunicationMessageService.findChatCountAndUpdate(fromId, isGroup, cbc);
+    }
+
 
 
     public static class SendMessageRequest {
@@ -707,6 +711,11 @@ public class CommunicationService extends Service implements WebsocketListnerInt
         public Long timestamp;
         public String socketSessionFrom;
         public String replyTo;
+        public boolean isAttach = false;
+        public String attachmentType = null;
+        public String attachmentName;
+        public String attachmentId;
+        public String localPath;
     }
 
     public static class ReceiveReadMessagesReq {

@@ -29,6 +29,7 @@ public class SqlMessageWrapper {
     public String replyTo;
     public Long time;
     public Long clientTime;
+    public String localPath;
 
     public SqlMessageWrapper() {
 
@@ -73,10 +74,12 @@ public class SqlMessageWrapper {
         ret.randomId = ""+mw.randomId;
         ret.time = mw.timestamp;
 
-        ret.attachmentId = null;
-        ret.attachmentName = null;
-        ret.attachmentType = null;
-        ret.isAttach = false;
+        ret.attachmentId = mw.attachmentId;
+        ret.attachmentName = mw.attachmentName;
+        ret.attachmentType = mw.attachmentType;
+        ret.isAttach = mw.isAttach;
+        ret.localPath = mw.localPath;
+
         ret.isDownloaded = true;
         return ret;
     }

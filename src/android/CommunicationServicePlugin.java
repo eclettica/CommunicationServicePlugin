@@ -306,6 +306,22 @@ public class CommunicationServicePlugin extends CordovaPlugin {
                         this.read(id, fromId, randomId, groupId, callbackContext);
                     break;
                 }
+                case "updateChatCount":
+                {
+                    String fromId = options.optString("uuid");
+                    Boolean isGroup = options.optBoolean("isGroup");
+                    CommunicationService.findChatCountAndUpdate(fromId, isGroup, new SQLiteAndroidDatabaseCallback() {
+                        public void error(String error) {
+                            if (callbackContext != null) {
+                                callbackContext.error(error);
+                            }
+                        }
+
+                        public void success(JSONArray arr) {
+
+                        }
+                        });
+                }
                 case "checkModule":
                     this.checkModule();
                     break;
@@ -554,7 +570,8 @@ public class CommunicationServicePlugin extends CordovaPlugin {
     }
     //@ReactMethod
     public void checkModule() {
-        sendEvent("onCheckModule", "{\"failed:\"" + this.failedHeartBit + ",\"connected\":"+this.isConnected+"}" );
+        //sendEvent("onCheckModule", "{\"failed:\"" + this.failedHeartBit + ",\"connected\":"+this.isConnected+"}" );
+        generateEvent("onCheckModule", "{\"failed:\"" + this.failedHeartBit + ",\"connected\":"+this.isConnected+"}" );
     }
 
     //@ReactMethod

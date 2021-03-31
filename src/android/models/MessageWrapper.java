@@ -24,5 +24,5 @@ public class MessageWrapper {
     public String groupName;
     public String attachmentName;
     public String attachmentId;
-
+    public String localPath;
 }

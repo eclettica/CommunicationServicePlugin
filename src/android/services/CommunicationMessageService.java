@@ -376,9 +376,10 @@ public class CommunicationMessageService {
             query = "SELECT * FROM Chat where groupId=?";
         else
             query = "SELECT * FROM Chat where fromId=?";*/
-        query = "SELECT * FROM Chat where uuid=?";
+        query = "SELECT * FROM Chat where uuid=? and isGroup=?";
         JSONArray arr = new JSONArray();
         arr.put(groupId);
+        arr.put(isGroup);
         CommunicationServiceSqlUtil.executeSingle(query, arr, new SQLiteAndroidDatabaseCallback() {
 
             public void error(String error) {
