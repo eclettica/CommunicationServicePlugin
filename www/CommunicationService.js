@@ -66,6 +66,13 @@ CommunicationServicePlugin.prototype.removeListner =function(eventName, listner)
     this._listners[eventName].splice(idx, 1);
 }
 
+CommunicationServicePlugin.prototype.removeListners = function() {
+  this._listners =
+  {
+      
+  };
+}
+
 var _listners =
 {
     
@@ -162,6 +169,25 @@ CommunicationServicePlugin.prototype.read = function(message, successCallback, e
   if(message.isGroup)
     options.groupId = message.groupId;
   cordova.exec(successCallback, errorCallback, 'CommunicationServicePlugin', 'read', [options]);
+}
+
+CommunicationServicePlugin.prototype.updateMessage = function(message, fieldList, successCallback, errorCallback) {
+  var options = {};
+  options.id = message.id;
+  options.fromId = message.fromId;
+  options.randomId = message.randomId;
+  if(message.isGroup)
+    options.groupId = message.groupId;
+  options.fieldList = [];
+  for (const iterator of fieldList) {
+    if(message[iterator] != undefined && message[iterator] != null) {
+      options.fieldList.push({
+      field: iterator,
+      value: message[iterator]
+     })
+    }
+  }
+  cordova.exec(successCallback, errorCallback, 'CommunicationServicePlugin', 'updateMessage', [options]);
 }
 
 CommunicationServicePlugin.prototype.startBackground = function(successCallback, errorCallback) {

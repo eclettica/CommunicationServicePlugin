@@ -31,6 +31,9 @@ public class SqlMessageWrapper {
     public Long clientTime;
     public String localPath;
 
+    /*public boolean isAttachment = false;
+    public String tempId = null;*/
+
     public SqlMessageWrapper() {
 
     }
@@ -45,6 +48,8 @@ public class SqlMessageWrapper {
         ret.fromName = mw.fromUser != null ? mw.fromUser.get("completeName") : null;
         ret.groupId = mw.groupId;
         ret.isAttach = mw.isAttach;
+        //ret.isAttachment = mw.isAttach;
+        //ret.tempId = mw.attachmentId;
         ret.isGroup = mw.isGroup;
         if(ret.isGroup == false)
             ret.groupId = ret.fromId;
@@ -79,6 +84,9 @@ public class SqlMessageWrapper {
         ret.attachmentType = mw.attachmentType;
         ret.isAttach = mw.isAttach;
         ret.localPath = mw.localPath;
+
+        //ret.isAttachment = mw.isAttach;
+        //ret.tempId = mw.attachmentId;
 
         ret.isDownloaded = true;
         return ret;

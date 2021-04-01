@@ -473,6 +473,39 @@ public class CommunicationMessageService {
         //}
     }
 
+    public static void getChatMessages(Integer page, Integer limit, List<QuerySelectObj> conds, SQLiteAndroidDatabaseCallback dbc) {
+
+        Map<String, String> sortMap = new HashMap<String, String>();
+        sortMap.put("time", "DESC");
+        QueryGroupObj qg = new QueryGroupObj();
+        qg.condition = "and";
+        qg.fields = new LinkedList<QuerySelectObj>();
+        if(conds != null) {
+            qg.fields.addAll(conds);
+        }
+        if(qg.groups != null)
+            LogUtils.printLog(tag, "getChatMessages generateQuery " + qg.groups.size());
+        QueryObj qo = selectQuery("Message", qg,
+                page, limit, sortMap);
+        LogUtils.printLog(tag, "getChatMessages generatedQuery " + qo.query);
+
+        CommunicationServiceSqlUtil.executeSingle(qo.query, qo.params, new SQLiteAndroidDatabaseCallback() {
+
+            public void error(String error) {
+                LogUtils.printLog(tag, "search messages dbquery callback error " + error);
+                if(dbc != null)
+                    dbc.error(error);
+            }
+
+            public void success(JSONArray arr) {
+                LogUtils.printLog(tag, "search messages " + arr);
+                if(dbc != null)
+                    dbc.success(arr);
+            }
+        });
+        //}
+    }
+
     public static void getChatMessages(String uuid, Boolean isGroup, Integer page, Integer limit, List<QuerySelectObj> conds, CallbackContext cbc, SQLiteAndroidDatabaseCallback dbc) {
 
         LogUtils.printLog(tag, "getChatMessages " + uuid + " " + isGroup);
@@ -1017,6 +1050,42 @@ public class CommunicationMessageService {
         group.fields = new LinkedList<QuerySelectObj>();
         QuerySelectObj qso = new QuerySelectObj("id", "=", id);
         group.fields.add(qso);
+        QueryObj qo = updateQuery("Message", fields, group);
+
+        CommunicationServiceSqlUtil.executeSingle(qo.query, qo.params, new SQLiteAndroidDatabaseCallback() {
+
+            public void error(String error) {
+                LogUtils.printLog(tag, "search message dbquery callback error " + error);
+                if(cbc != null)
+                    cbc.error(error);
+            }
+
+            public void success(JSONArray arr) {
+                LogUtils.printLog(tag, "search message dbquery callback " + arr);
+                if(cbc != null)
+                    cbc.success(arr);
+            }
+        });
+    }
+
+    public static void updateMessage(String fromId, String randomId, String groupId, Map<String, Object> fields, SQLiteAndroidDatabaseCallback cbc) {
+        //TODO gestire le chat di gruppo
+        String query = null;
+        /*if(isGroup)
+            query = "SELECT * FROM Chat where groupId=?";
+        else
+            query = "SELECT * FROM Chat where fromId=?";*/
+        QueryGroupObj group = new QueryGroupObj();
+        group.condition = "and";
+        group.fields = new LinkedList<QuerySelectObj>();
+        QuerySelectObj qso = new QuerySelectObj("fromId", "=", fromId);
+        group.fields.add(qso);
+        qso = new QuerySelectObj("randomId", "=", randomId);
+        group.fields.add(qso);
+        if (groupId != null) {
+            qso = new QuerySelectObj("isGroup", "=", "true");
+            group.fields.add(qso);
+        }
         QueryObj qo = updateQuery("Message", fields, group);
 
         CommunicationServiceSqlUtil.executeSingle(qo.query, qo.params, new SQLiteAndroidDatabaseCallback() {

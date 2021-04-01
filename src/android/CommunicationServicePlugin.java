@@ -258,6 +258,8 @@ public class CommunicationServicePlugin extends CordovaPlugin {
                     if(sqliteManager.needContext()) {
                         sqliteManager.setContext(this.cordova.getActivity());
                     }
+                    if(userId != null)
+                        CommunicationService.instance().setCurrentId(userId);
                     if(userId == null || userId.trim().equals(""))
                         userId = "test";
                     userId += "-v202102181700.db";
@@ -267,13 +269,6 @@ public class CommunicationServicePlugin extends CordovaPlugin {
                     callbackContext.sendPluginResult(pluginResult);
                 }
 
-                    if(true)
-                        break;
-                    String uri = options.getString("uri");
-                    LogUtils.printLog(tag,"connect uri: " + uri);
-                    this.callbackContext = callbackContext;
-                    if (uri != null)
-                        this.connect(uri);
                     break;
                 case "setInfo": {
                     String params = options.getString("params");
@@ -302,8 +297,18 @@ public class CommunicationServicePlugin extends CordovaPlugin {
                     String fromId = options.optString("fromId");
                     String randomId = options.optString("randomId");
                     String groupId = options.optString("groupId");
-                    if (id != null)
-                        this.read(id, fromId, randomId, groupId, callbackContext);
+                    //if (id != null)
+                    this.read(id, fromId, randomId, groupId, callbackContext);
+                    break;
+                }
+                case "updateMessage": {
+                    Long id = options.optLong("id");
+                    String fromId = options.optString("fromId");
+                    String randomId = options.optString("randomId");
+                    String groupId = options.optString("groupId");
+                    JSONArray fields = options.optJSONArray("fieldList");
+                    //if (id != null)
+                    this.updateMessage(id, fromId, randomId, groupId, fields, callbackContext);
                     break;
                 }
                 case "updateChatCount":
@@ -568,6 +573,11 @@ public class CommunicationServicePlugin extends CordovaPlugin {
     public void read(Long id, String fromId, String randomId, String groupId, CallbackContext cbc) {
         this.service.read(id, fromId, randomId, groupId, cbc);
     }
+
+    public void updateMessage(Long id, String fromId, String randomId, String groupId, JSONArray fieldsList, CallbackContext cbc) {
+        this.service.updateMessage(id, fromId, randomId, groupId, fieldsList, cbc);
+    }
+
     //@ReactMethod
     public void checkModule() {
         //sendEvent("onCheckModule", "{\"failed:\"" + this.failedHeartBit + ",\"connected\":"+this.isConnected+"}" );

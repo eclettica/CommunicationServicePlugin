@@ -39,6 +39,11 @@ public class CommunicationServiceSqlUtil {
         checkAllTables();
     }
 
+    static void clanDbName() {
+        dbName = null;
+        options = null;
+    }
+
     static void checkAllTables() {
         checkEvolutionTable();
         checkMessageTable();
@@ -298,11 +303,23 @@ public class CommunicationServiceSqlUtil {
 
 
     static void executeSingle(String query, JSONArray params, SQLiteAndroidDatabaseCallback cbc) {
+        if(dbName == null || dbName.trim().equals("")) {
+            LogUtils.printLog(tag, "DB is disconnected");
+            if(cbc != null)
+                cbc.error("DB is disconnected");
+            return;
+        }
         LogUtils.printLog(tag, "DBNAME " + dbName + " query: " + query);
         sqliteManager.executeSingle(dbName, query, params, cbc);
     }
 
     static void executeSingle(String query, JSONArray params, CallbackContext cbc) {
+        if(dbName == null || dbName.trim().equals("")) {
+            LogUtils.printLog(tag, "DB is disconnected");
+            if(cbc != null)
+                cbc.error("DB is disconnected");
+            return;
+        }
         LogUtils.printLog(tag, "DBNAME " + dbName + " query: " + query);
         sqliteManager.executeSingle(dbName, query, params, cbc);
     }

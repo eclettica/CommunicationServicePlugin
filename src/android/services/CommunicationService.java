@@ -82,6 +82,8 @@ public class CommunicationService extends Service implements WebsocketListnerInt
     public  static Context mContext;
     private int counter = 0;
 
+    private String userId;
+
     private String currentSessionId;
 
     public static CommunicationServicePlugin _plugin = null;
@@ -214,11 +216,20 @@ public class CommunicationService extends Service implements WebsocketListnerInt
         this.reloadUserList();
     }
 
+    public void setCurrentId(String userId) {
+        this.userId = userId;
+    }
+
     public void setDbName(String dbName) {
         if(dbName != null && !dbName.trim().equals(""))
             FileUtils.writeToFile("dbName", dbName, mContext);
 
         this.startDatabase(dbName, null);
+    }
+
+    public void cleanDbName() {
+        FileUtils.writeToFile("dbName", "", mContext);
+        CommunicationServiceSqlUtil.clanDbName();
     }
 
     private void startDatabase(String dbName, JSONObject options) {
@@ -262,6 +273,9 @@ public class CommunicationService extends Service implements WebsocketListnerInt
             case "onWebsocketMessage":
                 this.manageMessage(data);
                 break;
+            case "onWebsocketForceLogout":
+                this.forcelogout();
+                break;
             case "onWebsocketException":
                 break;
             case "onWebsocketClose":
@@ -287,6 +301,10 @@ public class CommunicationService extends Service implements WebsocketListnerInt
         this.reloadUserList();
     }
 
+    private void forcelogout() {
+        setDbName(null);
+    }
+
     /**
      * Questo metodo deve effettuare
      * 1 - la ricerca di messaggi non inviati e inviarli;
@@ -294,7 +312,26 @@ public class CommunicationService extends Service implements WebsocketListnerInt
      * 3 - la ricerca di messaggi letti non notificati e inviarli;
      */
     private void sentQueued() {
+        LogUtils.printLog(tag,"sentQueued ");
 
+            Integer limit = 1000;
+            Integer page = 0;
+            List<QuerySelectObj> conds = new LinkedList<QuerySelectObj>();
+            QuerySelectObj qso = new QuerySelectObj("fromId", "=", this.userId);
+            conds.add(qso);
+            qso = new QuerySelectObj("isSent", "=", "false");
+            conds.add(qso);
+
+            CommunicationMessageService.getChatMessages(page, limit, conds, new SQLiteAndroidDatabaseCallback() {
+
+                public void error(String error) {
+                    LogUtils.printLog(tag, "search messages dbquery callback error " + error);
+                }
+
+                public void success(JSONArray arr) {
+                    LogUtils.printLog(tag, "search messages " + arr);
+                }
+            });
     }
 
     /**
@@ -626,6 +663,8 @@ public class CommunicationService extends Service implements WebsocketListnerInt
 
         Gson gson = new Gson();
         SendMessageRequest r = gson.fromJson(message.toString(), SendMessageRequest.class);
+        r.isAttachment = r.isAttach;
+        r.tempId = r.attachmentId;
         LogUtils.printLog(tag, "FASE1 extract message");
         SqlMessageWrapper s = SqlMessageWrapper.buildFromRequest(r);
 
@@ -674,24 +713,137 @@ public class CommunicationService extends Service implements WebsocketListnerInt
     public static void read(Long id, String fromId, String randomId, String groupId, CallbackContext cbc) {
         Map<String, Object> fields = new HashMap<String, Object>();
         fields.put("isRead", true);
-        CommunicationMessageService.updateMessage(id, fields, new SQLiteAndroidDatabaseCallback() {
-            public void error(String error) {
-                LogUtils.printLog(tag, "dbquery callback error " + error);
-                if (cbc != null) {
-                    cbc.error(error);
+        if(id != null) {
+            CommunicationMessageService.updateMessage(id, fields, new SQLiteAndroidDatabaseCallback() {
+                public void error(String error) {
+                    LogUtils.printLog(tag, "dbquery callback error " + error);
+                    if (cbc != null) {
+                        cbc.error(error);
+                    }
                 }
-            }
 
-            public void success(JSONArray arr) {
-                CommunicationMessageService.findChatCountAndUpdate(fromId, groupId != null ? true : false, null);
-                ReceiveReadMessagesReq r = new ReceiveReadMessagesReq();
-                if(groupId != null)
-                    r.groupId = groupId;
-                r.lastRandom = Long.parseLong(randomId);
-                r.userUuid = fromId;
-                sendToWebsocket(READMESSAGE, r);
+                public void success(JSONArray arr) {
+                    CommunicationMessageService.findChatCountAndUpdate(fromId, groupId != null ? true : false, null);
+                    ReceiveReadMessagesReq r = new ReceiveReadMessagesReq();
+                    if (groupId != null)
+                        r.groupId = groupId;
+                    r.lastRandom = Long.parseLong(randomId);
+                    r.userUuid = fromId;
+                    sendToWebsocket(READMESSAGE, r);
+                }
+            });
+        } else {
+            CommunicationMessageService.updateMessage(fromId, randomId, groupId, fields, new SQLiteAndroidDatabaseCallback() {
+                public void error(String error) {
+                    LogUtils.printLog(tag, "dbquery callback error " + error);
+                    if (cbc != null) {
+                        cbc.error(error);
+                    }
+                }
+
+                public void success(JSONArray arr) {
+                    CommunicationMessageService.findChatCountAndUpdate(fromId, groupId != null ? true : false, null);
+                    ReceiveReadMessagesReq r = new ReceiveReadMessagesReq();
+                    if (groupId != null)
+                        r.groupId = groupId;
+                    r.lastRandom = Long.parseLong(randomId);
+                    r.userUuid = fromId;
+                    sendToWebsocket(READMESSAGE, r);
+                }
+            });
+        }
+    }
+
+    /*public static void read(Long id, String fromId, String randomId, String groupId, CallbackContext cbc) {
+        Map<String, Object> fields = new HashMap<String, Object>();
+        fields.put("isRead", true);
+        if(id != null) {
+            CommunicationMessageService.updateMessage(id, fields, new SQLiteAndroidDatabaseCallback() {
+                public void error(String error) {
+                    LogUtils.printLog(tag, "dbquery callback error " + error);
+                    if (cbc != null) {
+                        cbc.error(error);
+                    }
+                }
+
+                public void success(JSONArray arr) {
+                    CommunicationMessageService.findChatCountAndUpdate(fromId, groupId != null ? true : false, null);
+                    ReceiveReadMessagesReq r = new ReceiveReadMessagesReq();
+                    if (groupId != null)
+                        r.groupId = groupId;
+                    r.lastRandom = Long.parseLong(randomId);
+                    r.userUuid = fromId;
+                    sendToWebsocket(READMESSAGE, r);
+                }
+            });
+        } else {
+            CommunicationMessageService.updateMessage(fromId, randomId, groupId, fields, new SQLiteAndroidDatabaseCallback() {
+                public void error(String error) {
+                    LogUtils.printLog(tag, "dbquery callback error " + error);
+                    if (cbc != null) {
+                        cbc.error(error);
+                    }
+                }
+
+                public void success(JSONArray arr) {
+                    CommunicationMessageService.findChatCountAndUpdate(fromId, groupId != null ? true : false, null);
+                    ReceiveReadMessagesReq r = new ReceiveReadMessagesReq();
+                    if (groupId != null)
+                        r.groupId = groupId;
+                    r.lastRandom = Long.parseLong(randomId);
+                    r.userUuid = fromId;
+                    sendToWebsocket(READMESSAGE, r);
+                }
+            });
+        }
+    }*/
+
+    public static void updateMessage(Long id, String fromId, String randomId, String groupId, JSONArray fieldsList, CallbackContext cbc) {
+        Map<String, Object> fields = new HashMap<String, Object>();
+        JSONObject jobj;
+        for(int i = 0; i < fieldsList.length(); i++) {
+            try {
+                jobj = fieldsList.getJSONObject(i);
+                fields.put(jobj.getString("field"), jobj.get("value"));
+            } catch(Exception e) {
+                LogUtils.printLog(tag, "updateMessage error " + e.getMessage());
+                continue;
             }
-        });
+        }
+        if(fields.size() == 0) {
+            if(cbc != null)
+                cbc.error("non ci sono campi da aggiornare");
+        }
+
+        if(id != null) {
+            CommunicationMessageService.updateMessage(id, fields, new SQLiteAndroidDatabaseCallback() {
+                public void error(String error) {
+                    LogUtils.printLog(tag, "dbquery callback error " + error);
+                    if (cbc != null) {
+                        cbc.error(error);
+                    }
+                }
+
+                public void success(JSONArray arr) {
+                    if(cbc != null)
+                        cbc.success(arr);
+                }
+            });
+        } else {
+            CommunicationMessageService.updateMessage(fromId, randomId, groupId, fields, new SQLiteAndroidDatabaseCallback() {
+                public void error(String error) {
+                    LogUtils.printLog(tag, "dbquery callback error " + error);
+                    if (cbc != null) {
+                        cbc.error(error);
+                    }
+                }
+
+                public void success(JSONArray arr) {
+                    if(cbc != null)
+                        cbc.success(arr);
+                }
+            });
+        }
     }
 
     public static void findChatCountAndUpdate(String fromId, boolean isGroup, SQLiteAndroidDatabaseCallback cbc) {
@@ -716,6 +868,8 @@ public class CommunicationService extends Service implements WebsocketListnerInt
         public String attachmentName;
         public String attachmentId;
         public String localPath;
+        public boolean isAttachment = false;
+        public String tempId;
     }
 
     public static class ReceiveReadMessagesReq {
