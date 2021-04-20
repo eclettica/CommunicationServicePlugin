@@ -90,6 +90,8 @@ public class CommunicationService extends Service implements WebsocketListnerInt
 
     public static Class _mainClass = null;
 
+    public static IncomingCallActivity incomingCallActivity;
+
     public static final String USERSLIST = "userslist";
     public static final String UPDATEUSERS = "updateusers";
     public static final String FORCELOGOUT = "forcelogout";
@@ -262,6 +264,16 @@ public class CommunicationService extends Service implements WebsocketListnerInt
         mContext.startActivity(new Intent(mContext, IncomingCallActivity.class)
                 .putExtra("info", info)
                 .putExtra("status", status));
+    }
+
+    public static void setIncomingCallActivity(IncomingCallActivity ica) {
+        incomingCallActivity = ica;
+    }
+
+    public static void stopActivity() {
+        if(incomingCallActivity != null) {
+            incomingCallActivity.finish();
+        }
     }
 
     public void onEvent(String event, String data) {
@@ -450,6 +462,12 @@ public class CommunicationService extends Service implements WebsocketListnerInt
                             CommunicationService.fromName = null;
                         }
                     } else if("leave".equals(status)) {
+                        if(CommunicationService.isCalling) {
+                            CommunicationService.isCalling = false;
+                            CommunicationService.fromId = null;
+                            CommunicationService.fromName = null;
+                        }
+                    } else if("answered".equals(status)) {
                         if(CommunicationService.isCalling) {
                             CommunicationService.isCalling = false;
                             CommunicationService.fromId = null;
@@ -1091,6 +1109,7 @@ public class CommunicationService extends Service implements WebsocketListnerInt
 
             @Override
             public void successObj(Object obj) {
+                LogUtils.printLog(tag, "checkNotReadAndUpdateNotification " + obj);
                 Integer c = null;
                 if(obj != null) {
                     c = (Integer) obj;
@@ -1104,6 +1123,8 @@ public class CommunicationService extends Service implements WebsocketListnerInt
     }
 
     private void updateNotification(Boolean b, Integer num) {
-        NotificationService.instance().updateNotification(b, this, _mainClass);
+        LogUtils.printLog(tag, "updateNotification " + (num != null ? num : "null"));
+        LogUtils.printLog(tag, "updateNotification main class" + (_mainClass != null ? _mainClass : "null"));
+        NotificationService.instance().updateNotification(b, num, CommunicationService.instance(), _mainClass);
     }
 }

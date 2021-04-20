@@ -39,6 +39,8 @@ public class IncomingCallActivity extends Activity {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
 
+        CommunicationService.setIncomingCallActivity(this);
+
         super.onCreate(savedInstanceState);
         String package_name = getApplication().getPackageName();
         Resources res = getApplication().getResources();
@@ -49,6 +51,7 @@ public class IncomingCallActivity extends Activity {
             @Override
             public void onClick(View v) {
                 IncomingCallActivity.this.sendEvent("onAcceptCall");
+                CommunicationService.setIncomingCallActivity(null);
                 finish();
             }
         });
@@ -57,6 +60,7 @@ public class IncomingCallActivity extends Activity {
             @Override
             public void onClick(View v) {
                 IncomingCallActivity.this.sendEvent("onCancelCall");
+                CommunicationService.setIncomingCallActivity(null);
                 finish();
             }
         });
@@ -92,7 +96,7 @@ public class IncomingCallActivity extends Activity {
                 player.stop();
                 player.release();
             }
-
+            CommunicationService.setIncomingCallActivity(null);
             this.finish();
         }catch (Exception e){
             e.printStackTrace();
@@ -104,11 +108,13 @@ public class IncomingCallActivity extends Activity {
     protected void onDestroy() {
         super.onDestroy();
         instance = null;
+        CommunicationService.setIncomingCallActivity(null);
     }
 
     @Override
     public void finish() {
         super.finish();
         instance = null;
+        CommunicationService.setIncomingCallActivity(null);
     }
 }
