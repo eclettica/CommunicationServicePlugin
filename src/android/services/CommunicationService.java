@@ -435,7 +435,7 @@ public class CommunicationService extends Service implements WebsocketListnerInt
                         Boolean isActive = null;
                         try {
                             String package_name = getApplication().getPackageName();
-                            Class<?> clazz = Class.forName(package_name + "MainActivity");
+                            Class<?> clazz = Class.forName(package_name + ".MainActivity");
                             Field f = clazz.getField("active");
                             isActive = f.getBoolean(null);
                         } catch(Exception e) {
@@ -1123,8 +1123,8 @@ public class CommunicationService extends Service implements WebsocketListnerInt
     }
 
     private void updateNotification(Boolean b, Integer num) {
-        LogUtils.printLog(tag, "updateNotification " + (num != null ? num : "null"));
+        LogUtils.printLog(tag, "updateNotification -> NotificationService " + (num != null ? num : "null"));
         LogUtils.printLog(tag, "updateNotification main class" + (_mainClass != null ? _mainClass : "null"));
-        NotificationService.instance().updateNotification(b, num, CommunicationService.instance(), _mainClass);
+        NotificationService.instance().updateNotification(b, num, this.mContext, _mainClass);
     }
 }

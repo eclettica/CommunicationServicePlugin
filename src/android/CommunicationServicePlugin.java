@@ -36,6 +36,7 @@ import com.google.gson.Gson;
 
 import java.util.List;
 import java.util.LinkedList;
+import java.util.Date;
 
 
 //import com.facebook.react.modules.core.DeviceEventManagerModule;
@@ -623,12 +624,12 @@ public class CommunicationServicePlugin extends CordovaPlugin {
     {
         String eventName = event.name().toLowerCase();
         Boolean active   = event == Event.ACTIVATE;
+        String timestamp = "" + new Date().getTime();
+        String str = String.format("%s.on('%s', %s, %s)",
+                JS_NAMESPACE, eventName, params, timestamp);
 
-        String str = String.format("%s.on('%s', %s)",
-                JS_NAMESPACE, eventName, params);
-
-        str = String.format("%s;%s.fireEvent('%s',%s);",
-                str, JS_NAMESPACE, eventName, params);
+        str = String.format("%s;%s.fireEvent('%s',%s, %s);",
+                str, JS_NAMESPACE, eventName, params, timestamp);
 
         final String js = str;
 
@@ -641,9 +642,9 @@ public class CommunicationServicePlugin extends CordovaPlugin {
 
     public void generateEvent (String eventName, String params)
     {
-
-        String str = String.format("%s.onEvent('%s',%s);",
-                JS_NAMESPACE, eventName, params);
+        String timestamp = "" + new Date().getTime();
+        String str = String.format("%s.onEvent('%s',%s, %s);",
+                JS_NAMESPACE, eventName, params, timestamp);
 
         final String js = str;
 
