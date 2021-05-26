@@ -204,6 +204,14 @@
     var options = {};
     cordova.exec(successCallback, errorCallback, 'CommunicationServicePlugin', 'vibrate', [options]);
   }
+
+  CommunicationServicePlugin.prototype.showLocked = function(successCallback, errorCallback) {
+    cordova.exec(successCallback, errorCallback, 'CommunicationServicePlugin', 'showLocked', []);
+  }
+  
+  CommunicationServicePlugin.prototype.hideLocked = function(successCallback, errorCallback) {
+    cordova.exec(successCallback, errorCallback, 'CommunicationServicePlugin', 'hideLocked', []);
+  }
   
   
   // Installation constructor that binds ToastyPlugin to window

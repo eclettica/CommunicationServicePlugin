@@ -7,6 +7,8 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.ComponentName;
 import android.os.IBinder;
+import android.view.Window;
+import android.view.WindowManager;
 
 import android.os.AsyncTask;
 import android.os.Handler;
@@ -211,6 +213,7 @@ public class CommunicationServicePlugin extends CordovaPlugin {
         if(isBind && this.service != null) {
             this.service.setPlugin(this);
         }
+
     }
 
     @Override
@@ -252,6 +255,12 @@ public class CommunicationServicePlugin extends CordovaPlugin {
                     break;
                 case "getMessages":
                     this.getMessages(options, callbackContext);
+                    break;
+                case "showLocked":
+                    this.showLocked();
+                    break;
+                case "hideLocked":
+                    this.hideLocked();
                     break;
                 case "connect":
                     //CommunicationService.instance().startActivity();
@@ -649,6 +658,66 @@ public class CommunicationServicePlugin extends CordovaPlugin {
         final String js = str;
 
         cordova.getActivity().runOnUiThread(() -> webView.loadUrl("javascript:" + js));
+    }
+
+    public void showLocked() {
+        LogUtils.printLog(tag,"showLocked ");
+        cordova.getActivity().runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                 LogUtils.printLog(tag,"showLocked run");
+            Window window = cordova.getActivity().getWindow();
+            try {
+                    cordova.getActivity().setShowWhenLocked(true);
+                } catch(NoSuchMethodError e) {
+                    window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED);
+                }
+            try {
+                cordova.getActivity().setTurnScreenOn(true);
+                } catch(NoSuchMethodError e) {
+                    window.addFlags(WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
+                }
+                window.addFlags(WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD);
+                window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                }
+            });
+        LogUtils.printLog(tag,"showLocked ok");
+    }
+
+    public void hideLocked() {
+        LogUtils.printLog(tag,"hideLocked ");
+        cordova.getActivity().runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                LogUtils.printLog(tag,"hideLocked run ");
+                if (android.os.Build.VERSION.SDK_INT <= android.os.Build.VERSION_CODES.N) {
+                    LogUtils.printLog(tag,"hideLocked < N ");
+                    Window window = cordova.getActivity().getWindow();
+                    window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                    window.clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED);
+                    window.clearFlags(WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD);
+                    window.clearFlags(WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
+                    //callbackContext.success();
+                    return;
+                }               
+                
+                Window window = cordova.getActivity().getWindow();
+                window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                try {
+                    cordova.getActivity().setShowWhenLocked(false);
+                } catch(NoSuchMethodError e) {
+                    window.clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED);
+                }
+                window.clearFlags(WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD);
+                try {
+                    cordova.getActivity().setTurnScreenOn(false);
+                } catch(NoSuchMethodError e) {
+                    window.clearFlags(WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
+                }
+                //callbackContext.success();
+                LogUtils.printLog(tag,"hideLocked ok ");
+            }
+        });
     }
 
 }

@@ -10,6 +10,9 @@ import android.app.Activity;
 
 import android.content.res.Resources;
 
+import android.os.Handler;
+
+
 
 import it.linup.cordova.plugin.communication.services.CommunicationService;
 
@@ -18,6 +21,8 @@ import java.io.IOException;
 public class IncomingCallActivity extends Activity {
 
     private static IncomingCallActivity instance;
+    private Handler handler;
+    private Runnable runnable;
 
     public static void requestDestroy() {
         if (instance != null) {
@@ -85,6 +90,18 @@ public class IncomingCallActivity extends Activity {
             e.printStackTrace();
         }
         instance = this;
+
+        this.handler = new Handler();
+        this.runnable = new Runnable() {
+            public void run() {
+                if (player != null && player.isPlaying()) {
+                    player.stop();
+                    player.release();
+                }
+                finish();
+            }
+        };
+        this.handler.postDelayed(runnable, 30000);
     }
 
     private void sendEvent(String event) {
@@ -107,6 +124,7 @@ public class IncomingCallActivity extends Activity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        this.removeRunnable();
         instance = null;
         CommunicationService.setIncomingCallActivity(null);
     }
@@ -114,7 +132,20 @@ public class IncomingCallActivity extends Activity {
     @Override
     public void finish() {
         super.finish();
+        this.removeRunnable();
         instance = null;
         CommunicationService.setIncomingCallActivity(null);
+    }
+
+    private void removeRunnable() {
+        if(this.handler != null) {
+            if(this.runnable != null)
+                this.handler.removeCallbacks(this.runnable);
+            else {
+                this.handler.removeCallbacksAndMessages(null);
+            }
+        }
+        this.handler = null;
+        this.runnable = null;
     }
 }

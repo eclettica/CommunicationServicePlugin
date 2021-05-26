@@ -72,6 +72,7 @@ public class CommunicationService extends Service implements WebsocketListnerInt
     public static boolean isCalling = false;
     public static String fromId;
     public static String fromName;
+    public static String socketSessionFrom;
     protected static boolean requestHeartBit = false;
     protected static int failedHeartBit = 0;
     protected static JSONArray lstUser;
@@ -431,23 +432,36 @@ public class CommunicationService extends Service implements WebsocketListnerInt
                         CommunicationService.isCalling = true;
                         CommunicationService.fromId = data.getString("from");
                         CommunicationService.fromName = data.getString("fromCompleteName");
+                        CommunicationService.socketSessionFrom = data.getString("socketSessionFrom");
                         int delay=500;
                         Boolean isActive = null;
+                        // try {
+                        //     String package_name = getApplication().getPackageName();
+                        //     Class<?> clazz = Class.forName(package_name + ".MainActivity");
+                        //     Field f = clazz.getField("active");
+                        //     isActive = f.getBoolean(null);
+                        // } catch(Exception e) {
+                        //     LogUtils.printLog(tag,"exception... " + e.getMessage());
+                        //     e.printStackTrace();
+                        // }
+
                         try {
                             String package_name = getApplication().getPackageName();
                             Class<?> clazz = Class.forName(package_name + ".MainActivity");
-                            Field f = clazz.getField("active");
-                            isActive = f.getBoolean(null);
+                            isActive = isActivityRunning(clazz);
                         } catch(Exception e) {
                             LogUtils.printLog(tag,"exception... " + e.getMessage());
                             e.printStackTrace();
                         }
+
+                        
                         if (isActive == null || !isActive)
                         {
                             LogUtils.printLog(tag,"APP RIAVVIATA");
                             delay=4000;
                             restartApp();
                         }
+                        LogUtils.printLog(tag, "start incoming activity after  " + delay + " milliseconds... isActive= " + (isActive != null ? isActive : "null"));
                         new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
                             @Override
                             public void run() {
@@ -460,18 +474,22 @@ public class CommunicationService extends Service implements WebsocketListnerInt
                             CommunicationService.isCalling = false;
                             CommunicationService.fromId = null;
                             CommunicationService.fromName = null;
+                            CommunicationService.socketSessionFrom = null;
+
                         }
                     } else if("leave".equals(status)) {
                         if(CommunicationService.isCalling) {
                             CommunicationService.isCalling = false;
                             CommunicationService.fromId = null;
                             CommunicationService.fromName = null;
+                            CommunicationService.socketSessionFrom = null;
                         }
                     } else if("answered".equals(status)) {
                         if(CommunicationService.isCalling) {
                             CommunicationService.isCalling = false;
                             CommunicationService.fromId = null;
                             CommunicationService.fromName = null;
+                            CommunicationService.socketSessionFrom = null;
                         }
                     }
                     if (_plugin != null) {
@@ -487,6 +505,19 @@ public class CommunicationService extends Service implements WebsocketListnerInt
         }
 
     }
+
+    protected Boolean isActivityRunning(Class activityClass)
+{
+        ActivityManager activityManager = (ActivityManager) getBaseContext().getSystemService(Context.ACTIVITY_SERVICE);
+        List<ActivityManager.RunningTaskInfo> tasks = activityManager.getRunningTasks(Integer.MAX_VALUE);
+
+        for (ActivityManager.RunningTaskInfo task : tasks) {
+            if (activityClass.getCanonicalName().equalsIgnoreCase(task.baseActivity.getClassName()))
+                return true;
+        }
+
+        return false;
+}
 
     public static void receiveSendMessage(JSONObject data) {
         CommunicationMessageService.receiveSendMessage(data);
@@ -1066,6 +1097,7 @@ public class CommunicationService extends Service implements WebsocketListnerInt
                 m.put("status", event);
                 m.put("from", CommunicationService.fromId);
                 m.put("fromCompleteName", CommunicationService.fromName);
+                m.put("socketSessionFrom", CommunicationService.socketSessionFrom);
                 ob.put("data", m);
 
                 if (_plugin != null) {

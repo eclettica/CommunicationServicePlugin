@@ -32,7 +32,7 @@
             </feature>
         </config-file>
         <config-file target="AndroidManifest.xml" parent="/manifest/application">
-            <activity android:label="IncomingCall" android:name="it.linup.cordova.plugin.communication.IncomingCallActivity"></activity>
+            <activity android:label="@string/app_name" android:name="it.linup.cordova.plugin.communication.IncomingCallActivity"></activity>
             <service 
             android:name="it.linup.cordova.plugin.communication.services.CommunicationService"
             android:enabled="true"
