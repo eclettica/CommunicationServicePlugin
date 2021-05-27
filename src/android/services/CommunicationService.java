@@ -73,6 +73,7 @@ public class CommunicationService extends Service implements WebsocketListnerInt
     public static String fromId;
     public static String fromName;
     public static String socketSessionFrom;
+    public static String callId;
     protected static boolean requestHeartBit = false;
     protected static int failedHeartBit = 0;
     protected static JSONArray lstUser;
@@ -433,6 +434,7 @@ public class CommunicationService extends Service implements WebsocketListnerInt
                         CommunicationService.fromId = data.getString("from");
                         CommunicationService.fromName = data.getString("fromCompleteName");
                         CommunicationService.socketSessionFrom = data.getString("socketSessionFrom");
+                        CommunicationService.socketSessionFrom = data.getString("callId");
                         int delay=500;
                         Boolean isActive = null;
                         // try {
@@ -475,6 +477,7 @@ public class CommunicationService extends Service implements WebsocketListnerInt
                             CommunicationService.fromId = null;
                             CommunicationService.fromName = null;
                             CommunicationService.socketSessionFrom = null;
+                            CommunicationService.callId = null;
 
                         }
                     } else if("leave".equals(status)) {
@@ -483,6 +486,8 @@ public class CommunicationService extends Service implements WebsocketListnerInt
                             CommunicationService.fromId = null;
                             CommunicationService.fromName = null;
                             CommunicationService.socketSessionFrom = null;
+                            CommunicationService.callId = null;
+
                         }
                     } else if("answered".equals(status)) {
                         if(CommunicationService.isCalling) {
@@ -490,6 +495,7 @@ public class CommunicationService extends Service implements WebsocketListnerInt
                             CommunicationService.fromId = null;
                             CommunicationService.fromName = null;
                             CommunicationService.socketSessionFrom = null;
+                            CommunicationService.callId = null;
                         }
                     }
                     if (_plugin != null) {
@@ -1098,6 +1104,7 @@ public class CommunicationService extends Service implements WebsocketListnerInt
                 m.put("from", CommunicationService.fromId);
                 m.put("fromCompleteName", CommunicationService.fromName);
                 m.put("socketSessionFrom", CommunicationService.socketSessionFrom);
+                m.put("callId", CommunicationService.callId);
                 ob.put("data", m);
 
                 if (_plugin != null) {
